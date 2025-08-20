@@ -1,4 +1,5 @@
 
+
 // --- Base Types ---
 export type Employee = {
   id: string;
@@ -91,6 +92,13 @@ export type Chemical = {
   pictograms: string[];
 };
 
+export interface AuthorizedWorker {
+    id: string;
+    name: string;
+    blood_pressure: string;
+    is_fit: boolean | null;
+}
+
 export type WorkPermit = {
   id: string;
   folio: string;
@@ -113,6 +121,7 @@ export type WorkPermit = {
   work_type: "Interno" | "Externo";
   provider_name: string | null;
   provider_details: string | null;
+  authorized_workers: AuthorizedWorker[] | null;
 };
 
 export type Waste = {

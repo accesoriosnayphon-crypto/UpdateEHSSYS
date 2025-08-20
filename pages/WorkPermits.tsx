@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { WorkPermit, UserProfile, Jha, WorkPermitStatus, WORK_PERMIT_TYPES, Employee } from '../types';
+import { WorkPermit, UserProfile, Jha, WorkPermitStatus, WORK_PERMIT_TYPES, Employee, AuthorizedWorker } from '../types';
 import { useAuth } from '../Auth';
 import Modal from '../components/Modal';
 import { PencilIcon, TrashIcon, ClipboardDocumentListIcon, CheckCircleIcon } from '../constants';
@@ -72,6 +72,9 @@ const WorkPermitForm: React.FC<{
     currentUser: UserProfile;
     employees: Employee[];
 }> = ({ onSave, onClose, initialData, users, jhas, currentUser, employees }) => {
+    
+    const [newWorkerName, setNewWorkerName] = useState('');
+
     const [formState, setFormState] = useState({
         title: initialData?.title || '',
         type: initialData?.type || 'Trabajo en Altura',
@@ -91,8 +94,9 @@ const WorkPermitForm: React.FC<{
         work_type: initialData?.work_type || 'Interno',
         provider_name: initialData?.provider_name || '',
         provider_details: initialData?.provider_details || '',
+        authorized_workers: initialData?.authorized_workers || [],
     });
-
+    
     const defaultEmployee = useMemo(() => {
         if (initialData) {
             return employees.find(e => e.id === initialData.requester_employee_id);
@@ -122,11 +126,40 @@ const WorkPermitForm: React.FC<{
         setIsSearchingRequester(false);
     };
 
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormState(prev => ({ ...prev, [name]: value }));
     };
+    
+    const handleAddWorker = () => {
+        if (newWorkerName.trim() !== '') {
+            const newWorker: AuthorizedWorker = {
+                id: `worker-${Date.now()}`,
+                name: newWorkerName.trim(),
+                blood_pressure: '',
+                is_fit: null,
+            };
+            setFormState(prev => ({ ...prev, authorized_workers: [...(prev.authorized_workers || []), newWorker] }));
+            setNewWorkerName('');
+        }
+    };
+    
+    const handleRemoveWorker = (workerId: string) => {
+        setFormState(prev => ({
+            ...prev,
+            authorized_workers: (prev.authorized_workers || []).filter(w => w.id !== workerId)
+        }));
+    };
+
+    const handleWorkerChange = (workerId: string, field: 'blood_pressure' | 'is_fit', value: string | boolean | null) => {
+        setFormState(prev => ({
+            ...prev,
+            authorized_workers: (prev.authorized_workers || []).map(w =>
+                w.id === workerId ? { ...w, [field]: value } : w
+            )
+        }));
+    };
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -134,12 +167,21 @@ const WorkPermitForm: React.FC<{
             alert('Por favor, seleccione un empleado solicitante.');
             return;
         }
+
+        const finalWorkers = (formState.authorized_workers || []).map(w => {
+            if (formState.type !== 'Trabajo en Altura') {
+                return { ...w, blood_pressure: '', is_fit: null };
+            }
+            return w;
+        });
+
         const dataToSave: Omit<WorkPermit, 'id' | 'folio'> = {
             ...formState,
             requester_employee_id: requesterEmployeeId,
             jha_id: formState.jha_id || null,
             provider_name: formState.work_type === 'Interno' ? null : formState.provider_name,
             provider_details: formState.work_type === 'Interno' ? null : formState.provider_details,
+            authorized_workers: finalWorkers,
         };
         onSave(dataToSave, initialData?.id || null);
         onClose();
@@ -187,6 +229,64 @@ const WorkPermitForm: React.FC<{
                         )}
                     </div>
                 )}
+            </div>
+             
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Trabajadores Autorizados</label>
+                 <div className="flex items-center mt-1">
+                     <input
+                        type="text"
+                        value={newWorkerName}
+                        onChange={(e) => setNewWorkerName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddWorker())}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                        placeholder="Escriba un nombre y presione Enter o 'Agregar'"
+                    />
+                    <button type="button" onClick={handleAddWorker} className="ml-2 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark flex-shrink-0">
+                        Agregar
+                    </button>
+                </div>
+                 <div className="mt-2 space-y-2 max-h-48 overflow-y-auto border rounded-md p-2">
+                    {(formState.authorized_workers || []).length > 0 ? formState.authorized_workers.map(worker => (
+                        <div key={worker.id} className="p-3 bg-gray-50 rounded-lg border">
+                            <div className="flex justify-between items-center">
+                                <p className="font-semibold text-dark-text">{worker.name}</p>
+                                <button type="button" onClick={() => handleRemoveWorker(worker.id)} className="text-red-500 hover:text-red-700">
+                                    <TrashIcon className="w-4 h-4" />
+                                </button>
+                            </div>
+                             {formState.type === 'Trabajo en Altura' && (
+                                <div className="mt-3 pt-3 border-t space-y-3">
+                                    <div className="grid grid-cols-2 gap-4 items-center">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">Presión Arterial</label>
+                                             <input
+                                                type="text"
+                                                placeholder="Ej: 120/80"
+                                                value={worker.blood_pressure}
+                                                onChange={e => handleWorkerChange(worker.id, 'blood_pressure', e.target.value)}
+                                                className="mt-1 block w-full px-2 py-1 text-sm border border-gray-300 rounded-md"
+                                            />
+                                        </div>
+                                         <div>
+                                            <label className="block text-xs font-medium text-gray-600">¿Es apto?</label>
+                                            <div className="flex items-center space-x-3 mt-1">
+                                                <label className="flex items-center text-sm">
+                                                    <input type="radio" name={`is_fit_${worker.id}`} checked={worker.is_fit === true} onChange={() => handleWorkerChange(worker.id, 'is_fit', true)} className="focus:ring-primary h-4 w-4 text-primary border-gray-300"/>
+                                                    <span className="ml-1">Sí</span>
+                                                </label>
+                                                <label className="flex items-center text-sm">
+                                                    <input type="radio" name={`is_fit_${worker.id}`} checked={worker.is_fit === false} onChange={() => handleWorkerChange(worker.id, 'is_fit', false)} className="focus:ring-primary h-4 w-4 text-primary border-gray-300"/>
+                                                    <span className="ml-1">No</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                             )}
+                        </div>
+                    )) : <p className="text-sm text-gray-400 p-2 text-center">No hay trabajadores agregados.</p>}
+                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

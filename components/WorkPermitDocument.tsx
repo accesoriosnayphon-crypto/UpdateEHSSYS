@@ -85,7 +85,45 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
                 </section>
 
                 <section className="mb-4">
-                     <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">3. Precauciones de Seguridad</h2>
+                    <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">3. Personal Autorizado y Verificaciones</h2>
+                    <table className="min-w-full text-sm border-collapse border border-gray-300">
+                        <thead className="bg-gray-100">
+                            <tr>
+                                <th className="text-left p-2 font-semibold text-gray-600 uppercase border border-gray-300">Nombre del Trabajador</th>
+                                {permit.type === 'Trabajo en Altura' && (
+                                    <>
+                                        <th className="text-left p-2 font-semibold text-gray-600 uppercase border border-gray-300">Presión Arterial</th>
+                                        <th className="text-left p-2 font-semibold text-gray-600 uppercase border border-gray-300">Apto para Trabajar</th>
+                                    </>
+                                )}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {(permit.authorized_workers || []).length > 0 ? (
+                                permit.authorized_workers.map(worker => (
+                                    <tr key={worker.id} className="border-b">
+                                        <td className="p-2 border border-gray-300">{worker.name}</td>
+                                        {permit.type === 'Trabajo en Altura' && (
+                                            <>
+                                                <td className="p-2 border border-gray-300">{worker.blood_pressure || 'No Registrado'}</td>
+                                                <td className="p-2 border border-gray-300">{worker.is_fit === null ? 'No Registrado' : (worker.is_fit ? 'Sí, Apto' : 'No Apto')}</td>
+                                            </>
+                                        )}
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={permit.type === 'Trabajo en Altura' ? 3 : 1} className="p-2 text-center text-gray-500">
+                                        No hay trabajadores autorizados especificados.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </section>
+
+                <section className="mb-4">
+                     <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">4. Precauciones de Seguridad</h2>
                      <div className="grid grid-cols-2 gap-x-6 text-sm">
                          <div>
                             <h3 className="font-semibold mb-1">Equipo a Utilizar:</h3>
@@ -103,7 +141,7 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
                 </section>
                 
                 <section className="mb-4">
-                    <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">4. Autorizaciones</h2>
+                    <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">5. Autorizaciones</h2>
                     <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                         <div><strong>Solicitado por:</strong> {requester?.name || 'N/A'}</div>
                         <div><strong>Fecha de Solicitud:</strong> {new Date(permit.request_date).toLocaleDateString()}</div>
@@ -111,22 +149,40 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
                         <div><strong>Cerrado por:</strong> {closer?.full_name || 'Pendiente'}</div>
                     </div>
                 </section>
+
+                 <section className="mb-4">
+                    <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">Notas de Seguridad Importantes</h2>
+                    <ul className="text-xs text-gray-700 list-disc list-inside space-y-1">
+                        <li>Todo trabajo de alto riesgo deberá ser autorizado por el jefe del área donde se realizará y/o por el responsable de Seguridad e Higiene.</li>
+                        <li>El personal debe estar capacitado y calificado para realizar la tarea de manera segura.</li>
+                        <li>Se debe inspeccionar todo el equipo, herramientas y EPP antes de iniciar el trabajo. Cualquier equipo defectuoso debe ser retirado de servicio.</li>
+                        <li>Este permiso debe permanecer visible en el área de trabajo durante toda la duración de la tarea.</li>
+                    </ul>
+                </section>
                 
-                <footer className="pt-12 mt-8 grid grid-cols-3 gap-8 text-center text-sm">
+                <footer className="pt-12 mt-8 space-y-8 text-center text-sm">
                     <div>
-                        <hr className="border-gray-400 mb-2"/>
-                        <p className="font-semibold text-gray-800">Firma del Solicitante</p>
-                        <p className="text-xs">{requester?.name}</p>
+                        <h3 className="font-semibold text-gray-800 mb-4">Firmas de Trabajadores Autorizados</h3>
+                        <div className="grid grid-cols-3 gap-x-12 gap-y-8">
+                            {(permit.authorized_workers || []).map((worker) => (
+                                <div key={worker.id}>
+                                    <hr className="border-gray-400 mb-2"/>
+                                    <p className="text-xs">{worker.name}</p>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    <div>
-                        <hr className="border-gray-400 mb-2"/>
-                        <p className="font-semibold text-gray-800">Firma de Aprobación (Seguridad)</p>
-                         <p className="text-xs">{approver?.full_name || '________________'}</p>
-                    </div>
-                    <div>
-                        <hr className="border-gray-400 mb-2"/>
-                        <p className="font-semibold text-gray-800">Firma de Cierre</p>
-                         <p className="text-xs">{closer?.full_name || '________________'}</p>
+                    <div className="grid grid-cols-2 gap-16">
+                        <div>
+                            <hr className="border-gray-400 mb-2"/>
+                            <p className="font-semibold text-gray-800">Firma de Aprobación (Seguridad)</p>
+                             <p className="text-xs">{approver?.full_name || '________________'}</p>
+                        </div>
+                        <div>
+                            <hr className="border-gray-400 mb-2"/>
+                            <p className="font-semibold text-gray-800">Firma de Cierre</p>
+                             <p className="text-xs">{closer?.full_name || '________________'}</p>
+                        </div>
                     </div>
                 </footer>
             </div>
