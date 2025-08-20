@@ -36,12 +36,67 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
         <div className="text-dark-text">
             <style>{`
                 @media print {
-                    body * { visibility: hidden; }
-                    #print-section-permit, #print-section-permit * { visibility: visible; }
-                    #print-section-permit { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; font-size: 10px; }
-                    .no-print { display: none; }
-                    .print-bg-transparent { background-color: transparent !important; }
-                    #print-section-permit section, #print-section-permit footer { break-inside: avoid; }
+                    /* Hide everything by default */
+                    body * {
+                        visibility: hidden;
+                    }
+
+                    /* Un-hide the print section and its children */
+                    #print-section-permit, #print-section-permit * {
+                        visibility: visible;
+                    }
+
+                    /* Remove modal constraints that hide content */
+                    .fixed {
+                        position: static !important;
+                    }
+                    div[class*="max-h-"], div[class*="max-h-["], .max-h-\\[90vh\\] {
+                        max-height: none !important;
+                    }
+                    div[class*="overflow-y-auto"] {
+                        overflow: visible !important;
+                    }
+
+                    /* Position the print section at the top of the page */
+                    #print-section-permit {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        margin: 0;
+                        padding: 1rem;
+                        font-size: 10pt; /* Use points for better print consistency */
+                        color: #000 !important; /* Ensure text is black for printing */
+                    }
+
+                    /* Hide the print button */
+                    .no-print {
+                        display: none;
+                    }
+
+                    /* Ensure backgrounds are transparent for printing */
+                    .print-bg-transparent {
+                        background-color: transparent !important;
+                        -webkit-print-color-adjust: exact; /* For Chrome */
+                        print-color-adjust: exact;
+                    }
+                    
+                    /* Better page break control */
+                    section, footer {
+                        break-inside: avoid;
+                        page-break-inside: avoid; /* Legacy */
+                    }
+
+                    h1, h2, h3, h4 {
+                        break-after: avoid;
+                        page-break-after: avoid; /* Legacy */
+                    }
+                    
+                    /* Reduce spacing for print to fit on one page */
+                    footer {
+                        padding-top: 2rem !important; /* Reduced from pt-12 */
+                        margin-top: 1.5rem !important; /* Reduced from mt-8 */
+                    }
                 }
             `}</style>
             <div id="print-section-permit" className="p-4">
@@ -88,7 +143,7 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
                 <section className="mb-4">
                     <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">3. Personal Autorizado y Verificaciones</h2>
                     <table className="min-w-full text-sm border-collapse border border-gray-300">
-                        <thead className="bg-gray-100">
+                        <thead className="bg-gray-100 print-bg-transparent">
                             <tr>
                                 <th className="text-left p-2 font-semibold text-gray-600 uppercase border border-gray-300">Nombre del Trabajador</th>
                                 {permit.type === 'Trabajo en Altura' && (
