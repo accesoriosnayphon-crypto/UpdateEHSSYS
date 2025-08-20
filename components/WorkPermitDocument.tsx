@@ -41,6 +41,7 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
                     #print-section-permit { position: absolute; left: 0; top: 0; width: 100%; padding: 20px; font-size: 10px; }
                     .no-print { display: none; }
                     .print-bg-transparent { background-color: transparent !important; }
+                    #print-section-permit section, #print-section-permit footer { break-inside: avoid; }
                 }
             `}</style>
             <div id="print-section-permit" className="p-4">
@@ -150,8 +151,21 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
                     </div>
                 </section>
 
+                {permit.status === 'Cerrado' && (
+                    <section className="mb-4">
+                        <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">6. Revisión Final y Cierre</h2>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                            <div><strong>¿Hubo algún accidente o incidente?:</strong> {permit.final_review_accident === null ? 'No registrado' : (permit.final_review_accident ? 'Sí' : 'No')}</div>
+                            <div className="col-span-2"><strong>Comentarios / Observaciones de Cierre:</strong></div>
+                            <div className="col-span-2 text-sm whitespace-pre-wrap bg-gray-50 p-2 border rounded print-bg-transparent">
+                                {permit.final_review_comments || 'Sin comentarios.'}
+                            </div>
+                        </div>
+                    </section>
+                )}
+
                  <section className="mb-4">
-                    <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">Notas de Seguridad Importantes</h2>
+                    <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">7. Notas de Seguridad Importantes</h2>
                     <ul className="text-xs text-gray-700 list-disc list-inside space-y-1">
                         <li>Todo trabajo de alto riesgo deberá ser autorizado por el jefe del área donde se realizará y/o por el responsable de Seguridad e Higiene.</li>
                         <li>El personal debe estar capacitado y calificado para realizar la tarea de manera segura.</li>

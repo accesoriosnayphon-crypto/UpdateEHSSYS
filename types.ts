@@ -122,6 +122,8 @@ export type WorkPermit = {
   provider_name: string | null;
   provider_details: string | null;
   authorized_workers: AuthorizedWorker[] | null;
+  final_review_accident: boolean | null;
+  final_review_comments: string | null;
 };
 
 export type Waste = {

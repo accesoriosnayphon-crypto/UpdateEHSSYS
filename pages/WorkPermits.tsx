@@ -95,6 +95,8 @@ const WorkPermitForm: React.FC<{
         provider_name: initialData?.provider_name || '',
         provider_details: initialData?.provider_details || '',
         authorized_workers: initialData?.authorized_workers || [],
+        final_review_accident: initialData?.final_review_accident || null,
+        final_review_comments: initialData?.final_review_comments || null,
     });
     
     const defaultEmployee = useMemo(() => {
@@ -398,6 +400,51 @@ const WorkPermitForm: React.FC<{
     );
 };
 
+const ClosePermitForm: React.FC<{
+    onSave: (accident: boolean, comments: string) => void;
+    onClose: () => void;
+}> = ({ onSave, onClose }) => {
+    const [hadAccident, setHadAccident] = useState<boolean>(false);
+    const [comments, setComments] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave(hadAccident, comments);
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-gray-700">¿Hubo algún accidente o incidente durante el trabajo?</label>
+                <div className="mt-2 flex space-x-4">
+                    <label className="flex items-center">
+                        <input type="radio" name="accident" checked={!hadAccident} onChange={() => setHadAccident(false)} className="focus:ring-primary h-4 w-4 text-primary border-gray-300" />
+                        <span className="ml-2">No</span>
+                    </label>
+                    <label className="flex items-center">
+                        <input type="radio" name="accident" checked={hadAccident} onChange={() => setHadAccident(true)} className="focus:ring-primary h-4 w-4 text-primary border-gray-300" />
+                        <span className="ml-2">Sí</span>
+                    </label>
+                </div>
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700">Comentarios / Observaciones de Cierre</label>
+                <textarea
+                    value={comments}
+                    onChange={e => setComments(e.target.value)}
+                    rows={4}
+                    placeholder="Describa el estado final del área de trabajo, lecciones aprendidas, o detalles de cualquier incidente."
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                />
+            </div>
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+                <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Confirmar Cierre</button>
+            </div>
+        </form>
+    );
+};
+
 
 const WorkPermits: React.FC = () => {
     const [permits, setPermits] = useState<WorkPermit[]>([]);
@@ -409,8 +456,10 @@ const WorkPermits: React.FC = () => {
     
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isDocumentOpen, setIsDocumentOpen] = useState(false);
+    const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
     const [editingPermit, setEditingPermit] = useState<WorkPermit | null>(null);
     const [viewingPermit, setViewingPermit] = useState<WorkPermit | null>(null);
+    const [closingPermit, setClosingPermit] = useState<WorkPermit | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -442,13 +491,23 @@ const WorkPermits: React.FC = () => {
         setEditingPermit(null);
     };
 
+    const handleConfirmClose = async (permitId: string, accident: boolean, comments: string) => {
+        if (!currentUser) return;
+        await db.updateWorkPermit(permitId, {
+            status: 'Cerrado',
+            closer_user_id: currentUser.id,
+            close_date: new Date().toISOString().split('T')[0],
+            final_review_accident: accident,
+            final_review_comments: comments,
+        });
+        fetchData();
+        setIsCloseModalOpen(false);
+        setClosingPermit(null);
+    };
+
     const handleUpdateStatus = async (permit: WorkPermit, newStatus: WorkPermitStatus) => {
         const updates: Partial<WorkPermit> = { status: newStatus };
         if (newStatus === 'Aprobado') updates.approver_user_id = currentUser!.id;
-        if (newStatus === 'Cerrado') {
-            updates.closer_user_id = currentUser!.id;
-            updates.close_date = new Date().toISOString().split('T')[0];
-        }
         if (newStatus === 'Rechazado') updates.approver_user_id = currentUser!.id;
 
         await db.updateWorkPermit(permit.id, updates);
@@ -515,6 +574,9 @@ const WorkPermits: React.FC = () => {
                                         {permit.status === 'Solicitado' && currentUser?.level === 'Administrador' &&
                                             <button onClick={() => handleUpdateStatus(permit, 'Aprobado')} className="text-green-600 hover:text-green-800" title="Aprobar"><CheckCircleIcon className="w-5 h-5"/></button>
                                         }
+                                        {(permit.status === 'Aprobado' || permit.status === 'En Progreso') &&
+                                            <button onClick={() => { setClosingPermit(permit); setIsCloseModalOpen(true); }} className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700 font-semibold">Cerrar</button>
+                                        }
                                         {permit.status !== 'Cerrado' && permit.status !== 'Rechazado' &&
                                             <button onClick={() => { setEditingPermit(permit); setIsFormOpen(true); }} className="text-indigo-600 hover:text-indigo-900" title="Editar"><PencilIcon className="w-5 h-5"/></button>
                                         }
@@ -538,6 +600,15 @@ const WorkPermits: React.FC = () => {
 
             <Modal isOpen={isDocumentOpen} onClose={() => setIsDocumentOpen(false)} title={`Permiso de Trabajo - ${viewingPermit?.folio || ''}`}>
                 {viewingPermit && <WorkPermitDocument permit={viewingPermit} users={users} jhas={jhas} employees={employees} />}
+            </Modal>
+            
+            <Modal isOpen={isCloseModalOpen} onClose={() => setIsCloseModalOpen(false)} title={`Cerrar Permiso - ${closingPermit?.folio}`}>
+                {closingPermit && (
+                    <ClosePermitForm
+                        onClose={() => setIsCloseModalOpen(false)}
+                        onSave={(accident, comments) => handleConfirmClose(closingPermit.id, accident, comments)}
+                    />
+                )}
             </Modal>
         </div>
     );
