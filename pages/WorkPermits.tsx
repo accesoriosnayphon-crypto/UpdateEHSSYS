@@ -96,6 +96,7 @@ const WorkPermitForm: React.FC<{
         provider_details: initialData?.provider_details || '',
         authorized_workers: initialData?.authorized_workers || [],
         final_review_accident: initialData?.final_review_accident || null,
+        final_review_lockout_tagout: initialData?.final_review_lockout_tagout || null,
         final_review_comments: initialData?.final_review_comments || null,
     });
     
@@ -401,15 +402,16 @@ const WorkPermitForm: React.FC<{
 };
 
 const ClosePermitForm: React.FC<{
-    onSave: (accident: boolean, comments: string) => void;
+    onSave: (accident: boolean, lockoutApplied: boolean, comments: string) => void;
     onClose: () => void;
 }> = ({ onSave, onClose }) => {
     const [hadAccident, setHadAccident] = useState<boolean>(false);
+    const [lockoutApplied, setLockoutApplied] = useState<boolean>(false);
     const [comments, setComments] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(hadAccident, comments);
+        onSave(hadAccident, lockoutApplied, comments);
     };
 
     return (
@@ -423,6 +425,19 @@ const ClosePermitForm: React.FC<{
                     </label>
                     <label className="flex items-center">
                         <input type="radio" name="accident" checked={hadAccident} onChange={() => setHadAccident(true)} className="focus:ring-primary h-4 w-4 text-primary border-gray-300" />
+                        <span className="ml-2">Sí</span>
+                    </label>
+                </div>
+            </div>
+             <div>
+                <label className="block text-sm font-medium text-gray-700">¿Se aplicó bloqueo de energía y/o sistemas (LOTO)?</label>
+                <div className="mt-2 flex space-x-4">
+                    <label className="flex items-center">
+                        <input type="radio" name="lockout" checked={!lockoutApplied} onChange={() => setLockoutApplied(false)} className="focus:ring-primary h-4 w-4 text-primary border-gray-300" />
+                        <span className="ml-2">No</span>
+                    </label>
+                    <label className="flex items-center">
+                        <input type="radio" name="lockout" checked={lockoutApplied} onChange={() => setLockoutApplied(true)} className="focus:ring-primary h-4 w-4 text-primary border-gray-300" />
                         <span className="ml-2">Sí</span>
                     </label>
                 </div>
@@ -491,13 +506,14 @@ const WorkPermits: React.FC = () => {
         setEditingPermit(null);
     };
 
-    const handleConfirmClose = async (permitId: string, accident: boolean, comments: string) => {
+    const handleConfirmClose = async (permitId: string, accident: boolean, lockoutApplied: boolean, comments: string) => {
         if (!currentUser) return;
         await db.updateWorkPermit(permitId, {
             status: 'Cerrado',
             closer_user_id: currentUser.id,
             close_date: new Date().toISOString().split('T')[0],
             final_review_accident: accident,
+            final_review_lockout_tagout: lockoutApplied,
             final_review_comments: comments,
         });
         fetchData();
@@ -606,7 +622,7 @@ const WorkPermits: React.FC = () => {
                 {closingPermit && (
                     <ClosePermitForm
                         onClose={() => setIsCloseModalOpen(false)}
-                        onSave={(accident, comments) => handleConfirmClose(closingPermit.id, accident, comments)}
+                        onSave={(accident, lockoutApplied, comments) => handleConfirmClose(closingPermit.id, accident, lockoutApplied, comments)}
                     />
                 )}
             </Modal>

@@ -54,7 +54,7 @@ const navLinkGroups = [
         name: 'Análisis y Planificación',
         links: [
             { permission: 'manage_incidents' as Permission, path: '/incidents', label: 'Incidentes', icon: <ExclamationTriangleIcon className="w-6 h-6" /> },
-            { permission: 'manage_jha' as Permission, path: '/risk-management', label: 'Gestión de Riesgos', icon: <DocumentMagnifyingGlassIcon className="w-6 h-6" /> },
+            { permission: 'manage_jha' as Permission, path: '/risk-management', label: 'Análisis de Trabajo Seguro (ATS)', icon: <DocumentMagnifyingGlassIcon className="w-6 h-6" /> },
             { permission: 'manage_work_permits' as Permission, path: '/work-permits', label: 'Permisos de Trabajo', icon: <BriefcaseIcon className="w-6 h-6" /> },
             { permission: 'manage_activities' as Permission, path: '/activities', label: 'Actividades', icon: <CalendarDaysIcon className="w-6 h-6" /> },
             { permission: 'manage_audits' as Permission, path: '/audits', label: 'Auditorías', icon: <DocumentCheckIcon className="w-6 h-6" /> },

@@ -113,7 +113,7 @@ const JhaForm: React.FC<{
 
             <div className="flex justify-end space-x-2 pt-4 border-t">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Guardar JHA</button>
+                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md">Guardar ATS</button>
             </div>
         </form>
     );
@@ -171,10 +171,10 @@ const RiskManagement: React.FC = () => {
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-dark-text">Análisis de Trabajo Seguro (JHA)</h2>
+                <h2 className="text-xl font-bold text-dark-text">Análisis de Trabajo Seguro (ATS)</h2>
                 {hasPermission('manage_jha') && (
                     <button onClick={() => handleOpenForm(null)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
-                        + Crear Nuevo JHA
+                        + Crear Nuevo ATS
                     </button>
                 )}
             </div>
@@ -214,17 +214,17 @@ const RiskManagement: React.FC = () => {
                             </tr>
                         ))}
                         {jhas.length === 0 && !loading && (
-                            <tr><td colSpan={4} className="text-center py-4 text-gray-500">No hay JHA registrados.</td></tr>
+                            <tr><td colSpan={4} className="text-center py-4 text-gray-500">No hay ATS registrados.</td></tr>
                         )}
                     </tbody>
                 </table>
             </div>
 
-            <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title={currentJha ? 'Editar JHA' : 'Crear Nuevo JHA'}>
+            <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title={currentJha ? 'Editar ATS' : 'Crear Nuevo ATS'}>
                 <JhaForm onSave={handleSave} onClose={() => setIsFormOpen(false)} initialData={currentJha} />
             </Modal>
 
-            <Modal isOpen={isDocumentOpen} onClose={() => setIsDocumentOpen(false)} title={`JHA: ${currentJha?.title || ''}`}>
+            <Modal isOpen={isDocumentOpen} onClose={() => setIsDocumentOpen(false)} title={`ATS: ${currentJha?.title || ''}`}>
                 {currentJha && <JhaDocument jha={currentJha} />}
             </Modal>
         </div>

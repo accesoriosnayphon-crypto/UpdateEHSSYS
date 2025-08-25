@@ -103,7 +103,7 @@ export type WorkPermit = {
   id: string;
   folio: string;
   title: string;
-  type: "Trabajo en Caliente" | "Trabajo en Altura" | "Espacio Confinado" | "Eléctrico" | "Otro";
+  type: "Trabajo en Caliente" | "Trabajo en Altura" | "Espacio Confinado" | "Eléctrico" | "Manejo de Químicos Peligrosos" | "Otro";
   status: "Solicitado" | "Aprobado" | "Rechazado" | "En Progreso" | "Cerrado";
   request_date: string;
   valid_from: string | null;
@@ -123,6 +123,7 @@ export type WorkPermit = {
   provider_details: string | null;
   authorized_workers: AuthorizedWorker[] | null;
   final_review_accident: boolean | null;
+  final_review_lockout_tagout: boolean | null;
   final_review_comments: string | null;
 };
 
@@ -307,7 +308,7 @@ export type PictogramKey =
   | 'health_hazard' 
   | 'environmental_hazard';
 
-export const WORK_PERMIT_TYPES = ['Trabajo en Caliente', 'Trabajo en Altura', 'Espacio Confinado', 'Eléctrico', 'Otro'] as const;
+export const WORK_PERMIT_TYPES = ['Trabajo en Caliente', 'Trabajo en Altura', 'Espacio Confinado', 'Eléctrico', 'Manejo de Químicos Peligrosos', 'Otro'] as const;
 export type WorkPermitType = typeof WORK_PERMIT_TYPES[number];
 
 export const WORK_PERMIT_STATUSES = ['Solicitado', 'Aprobado', 'Rechazado', 'En Progreso', 'Cerrado'] as const;
@@ -406,7 +407,7 @@ export const PERMISSIONS: { id: Permission; label: string }[] = [
   { id: 'manage_trainings', label: 'Gestionar Capacitaciones' },
   { id: 'manage_inspections', label: 'Gestionar Insp. EPP' },
   { id: 'manage_safety_inspections', label: 'Gestionar Insp. de Seguridad' },
-  { id: 'manage_jha', label: 'Gestionar JHA' },
+  { id: 'manage_jha', label: 'Gestionar Análisis de Trabajo Seguro' },
   { id: 'manage_chemicals', label: 'Gestionar Inventario Químico' },
   { id: 'manage_activities', label: 'Gestionar Actividades' },
   { id: 'manage_work_permits', label: 'Gestionar Permisos de Trabajo' },

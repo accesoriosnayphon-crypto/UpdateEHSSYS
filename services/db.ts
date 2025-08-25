@@ -56,7 +56,65 @@ const INITIAL_SETUP_DATA = {
     wastes: [] as types.Waste[],
     waste_logs: [] as types.WasteLog[],
     capas: [] as types.Capa[],
-    jhas: [] as types.Jha[],
+    jhas: [
+        {
+            id: 'jha-1',
+            title: 'Operación de Sierra de Mesa para Corte de Madera',
+            area: 'Taller de Corte',
+            creation_date: new Date(new Date().setDate(new Date().getDate()-10)).toISOString().split('T')[0],
+            steps: [
+                {
+                    id: 'jha-1-step-1',
+                    description: 'Inspección Pre-Uso de la Sierra de Mesa.',
+                    hazards: [
+                        { id: 'jha-1-h-1', description: 'Equipo defectuoso (cableado expuesto, interruptor dañado).', controls: 'Realizar checklist de inspección visual antes de cada uso. No operar si se detectan anomalías y reportar inmediatamente a supervisor.', risk_level: 'Medio' },
+                        { id: 'jha-1-h-2', description: 'Guarda de seguridad del disco faltante o mal ajustada.', controls: 'Asegurar que la guarda esté siempre en su lugar y funcione correctamente. Prohibido operar la máquina sin la guarda.', risk_level: 'Alto' },
+                        { id: 'jha-1-h-3', description: 'Disco de corte dañado, desafilado o incorrecto para el material.', controls: 'Verificar que el disco no tenga dientes rotos o fisuras. Utilizar el disco adecuado para el tipo de madera a cortar.', risk_level: 'Medio' },
+                    ]
+                },
+                {
+                    id: 'jha-1-step-2',
+                    description: 'Ejecución del Corte de la pieza de madera.',
+                    hazards: [
+                        { id: 'jha-1-h-4', description: 'Contacto accidental con el disco en movimiento.', controls: 'Mantener una distancia segura. Usar siempre el empujador para piezas pequeñas (menores a 15 cm de ancho). Nunca cruzar los brazos sobre la línea de corte.', risk_level: 'Alto' },
+                        { id: 'jha-1-h-5', description: 'Retroceso violento de la pieza (kickback).', controls: 'Asegurar que la guía paralela esté bien fijada y paralela al disco. No cortar madera torcida o con nudos grandes. Usar el cuchillo divisor.', risk_level: 'Alto' },
+                        { id: 'jha-1-h-6', description: 'Proyección de astillas, virutas o partículas.', controls: 'Uso obligatorio de lentes de seguridad en todo momento. Asegurar que el sistema de extracción de polvo esté funcionando.', risk_level: 'Medio' },
+                    ]
+                },
+                 {
+                    id: 'jha-1-step-3',
+                    description: 'Limpieza del área de trabajo post-operación.',
+                    hazards: [
+                        { id: 'jha-1-h-7', description: 'Cortes con el disco al limpiar con la máquina conectada.', controls: 'Desconectar la sierra de la fuente de energía antes de realizar cualquier limpieza. Utilizar cepillos o aspiradoras para remover el aserrín, no las manos.', risk_level: 'Bajo' },
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'jha-2',
+            title: 'Aplicación de Pintura con Pistola de Aire',
+            area: 'Cabina de Pintura',
+            creation_date: new Date(new Date().setDate(new Date().getDate()-5)).toISOString().split('T')[0],
+            steps: [
+                {
+                    id: 'jha-2-step-1',
+                    description: 'Preparación de la pintura y equipo de aspersión.',
+                    hazards: [
+                        { id: 'jha-2-h-1', description: 'Inhalación de vapores tóxicos de solventes.', controls: 'Realizar la mezcla en un área bien ventilada. Uso obligatorio de respirador con cartuchos para vapores orgánicos.', risk_level: 'Alto' },
+                        { id: 'jha-2-h-2', description: 'Contacto de químicos con la piel o los ojos.', controls: 'Uso de guantes de nitrilo y lentes de seguridad o careta facial. Tener lavaojos de emergencia cercano y operativo.', risk_level: 'Medio' },
+                    ]
+                },
+                {
+                    id: 'jha-2-step-2',
+                    description: 'Aplicación de la pintura sobre las cajas de madera.',
+                    hazards: [
+                        { id: 'jha-2-h-3', description: 'Atmósfera explosiva por acumulación de vapores inflamables.', controls: 'Asegurar que el sistema de extracción de la cabina de pintura esté funcionando correctamente. Prohibido el uso de herramientas que generen chispas, teléfonos celulares o fumar en el área.', risk_level: 'Alto' },
+                        { id: 'jha-2-h-4', description: 'Inhalación prolongada de niebla de pintura.', controls: 'Uso de traje completo (Tyvek), respirador y guantes durante toda la aplicación. Limitar el tiempo de exposición continua.', risk_level: 'Medio' },
+                    ]
+                }
+            ]
+        }
+    ] as types.Jha[],
     activities: [] as types.Activity[],
     audits: [] as types.Audit[]
 };

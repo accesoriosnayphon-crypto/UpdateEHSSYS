@@ -35,7 +35,7 @@ const JhaDocument: React.FC<JhaDocumentProps> = ({ jha }) => {
             <div id="print-section-jha" className="p-4">
                 <header className="text-center border-b pb-4 mb-4">
                     {appSettings?.company_logo && <img src={appSettings.company_logo} alt={`${appSettings.company_name} Logo`} className="h-16 w-auto mx-auto mb-4" />}
-                    <h1 className="text-2xl font-bold text-gray-900">Análisis de Trabajo Seguro (JHA)</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Análisis de Trabajo Seguro (ATS)</h1>
                     <p className="text-gray-600">{appSettings?.company_name || 'EHS Integral Management'}</p>
                 </header>
                 

@@ -211,9 +211,12 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
                         <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">6. Revisión Final y Cierre</h2>
                         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                             <div><strong>¿Hubo algún accidente o incidente?:</strong> {permit.final_review_accident === null ? 'No registrado' : (permit.final_review_accident ? 'Sí' : 'No')}</div>
-                            <div className="col-span-2"><strong>Comentarios / Observaciones de Cierre:</strong></div>
-                            <div className="col-span-2 text-sm whitespace-pre-wrap bg-gray-50 p-2 border rounded print-bg-transparent">
-                                {permit.final_review_comments || 'Sin comentarios.'}
+                            <div><strong>¿Se aplicó bloqueo de energía (LOTO)?:</strong> {permit.final_review_lockout_tagout === null ? 'No registrado' : (permit.final_review_lockout_tagout ? 'Sí' : 'No')}</div>
+                            <div className="col-span-2 mt-2">
+                                <strong>Comentarios / Observaciones de Cierre:</strong>
+                                <div className="mt-1 text-sm whitespace-pre-wrap bg-gray-50 p-2 border rounded print-bg-transparent min-h-[6rem]">
+                                    {permit.final_review_comments || ''}
+                                </div>
                             </div>
                         </div>
                     </section>
