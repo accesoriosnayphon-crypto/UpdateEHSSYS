@@ -4,7 +4,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { HashRouter, Route, Routes, NavLink, useLocation, Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Employees from './pages/Employees';
-import PPE from './pages/PPE';
+import PpeInventory from './pages/PpeInventory';
+import PpeDeliveries from './pages/PpeDeliveries';
 import Incidents from './pages/Incidents';
 import Training from './pages/Training';
 import Inspections from './pages/Inspections';
@@ -43,7 +44,8 @@ const navLinkGroups = [
     {
         name: 'Operaciones EHS',
         links: [
-            { permission: 'manage_ppe' as Permission, path: '/ppe', label: 'EPP', icon: <ShieldCheckIcon className="w-6 h-6" /> },
+            { permission: 'manage_ppe' as Permission, path: '/ppe-inventory', label: 'Inventario EPP', icon: <ShieldCheckIcon className="w-6 h-6" /> },
+            { permission: 'manage_ppe' as Permission, path: '/ppe-deliveries', label: 'Entregas EPP', icon: <ArchiveBoxIcon className="w-6 h-6" /> },
             { permission: 'manage_inspections' as Permission, path: '/inspections', label: 'Insp. EPP', icon: <ClipboardDocumentCheckIcon className="w-6 h-6" /> },
             { permission: 'manage_safety_inspections' as Permission, path: '/safety-inspections', label: 'Insp. de Seguridad', icon: <ShieldExclamationIcon className="w-6 h-6" /> },
             { permission: 'manage_chemicals' as Permission, path: '/chemicals', label: 'Inventario Químico', icon: <VialIcon className="w-6 h-6" /> },
@@ -71,20 +73,27 @@ const navLinkGroups = [
     }
 ];
 
-const NavGroup: React.FC<{group: typeof navLinkGroups[0], availableLinks: typeof navLinkGroups[0]['links']}> = ({ group, availableLinks }) => {
-    const [isOpen, setIsOpen] = useState(group.name === 'Principal');
+const NavGroup: React.FC<{
+    group: typeof navLinkGroups[0], 
+    availableLinks: typeof navLinkGroups[0]['links'],
+    isOpen: boolean,
+    onToggle: () => void
+}> = ({ group, availableLinks, isOpen, onToggle }) => {
 
     if (availableLinks.length === 0) return null;
+    
+    const isPrincipal = group.name === 'Principal';
+    const isEffectivelyOpen = isPrincipal || isOpen;
 
     return (
         <div>
-            {group.name !== 'Principal' && (
-                <button onClick={() => setIsOpen(!isOpen)} className="w-full flex justify-between items-center text-left px-3 py-2 text-xs font-bold uppercase text-gray-400 hover:text-white">
+            {!isPrincipal && (
+                <button onClick={onToggle} className="w-full flex justify-between items-center text-left px-3 py-2 text-xs font-bold uppercase text-gray-400 hover:text-white">
                     <span>{group.name}</span>
                     <ChevronDownIcon className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
             )}
-            <div className={`space-y-1 transition-all duration-300 overflow-hidden ${isOpen ? 'max-h-screen' : 'max-h-0'}`}>
+            <div className={`space-y-1 transition-all duration-300 overflow-hidden ${isEffectivelyOpen ? 'max-h-screen' : 'max-h-0'}`}>
                 {availableLinks.map((link) => (
                     <NavLink
                         key={link.path}
@@ -105,6 +114,11 @@ const NavGroup: React.FC<{group: typeof navLinkGroups[0], availableLinks: typeof
 
 const Sidebar: React.FC = () => {
   const { hasPermission, logout, currentUser, appSettings } = useAuth();
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+
+  const handleToggleGroup = (groupName: string) => {
+      setOpenGroup(prevOpenGroup => (prevOpenGroup === groupName ? null : groupName));
+  };
   
   const availableGroups = useMemo(() => {
     return navLinkGroups.map(group => ({
@@ -124,7 +138,13 @@ const Sidebar: React.FC = () => {
       </div>
       <nav className="flex-grow p-2 space-y-1 overflow-y-auto">
         {availableGroups.map((group) => (
-           <NavGroup key={group.name} group={group} availableLinks={group.links} />
+           <NavGroup 
+                key={group.name} 
+                group={group} 
+                availableLinks={group.links}
+                isOpen={openGroup === group.name}
+                onToggle={() => handleToggleGroup(group.name)}
+            />
         ))}
       </nav>
       <div className="p-4 border-t border-primary-dark">
@@ -167,7 +187,8 @@ const ProtectedLayout: React.FC = () => {
                     <Routes>
                         {hasPermission('view_dashboard') && <Route path="/" element={<Dashboard />} />}
                         {hasPermission('manage_employees') && <Route path="/employees" element={<Employees />} />}
-                        {hasPermission('manage_ppe') && <Route path="/ppe" element={<PPE />} />}
+                        {hasPermission('manage_ppe') && <Route path="/ppe-inventory" element={<PpeInventory />} />}
+                        {hasPermission('manage_ppe') && <Route path="/ppe-deliveries" element={<PpeDeliveries />} />}
                         {hasPermission('manage_incidents') && <Route path="/incidents" element={<Incidents />} />}
                         {hasPermission('manage_trainings') && <Route path="/training" element={<Training />} />}
                         {hasPermission('manage_inspections') && <Route path="/inspections" element={<Inspections />} />}

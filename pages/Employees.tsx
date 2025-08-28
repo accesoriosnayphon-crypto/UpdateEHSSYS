@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Employee } from '../types';
 import Modal from '../components/Modal';
@@ -16,11 +15,12 @@ const EmployeeForm: React.FC<{
     const [department, setDepartment] = useState(initialData?.department || '');
     const [position, setPosition] = useState(initialData?.position || '');
     const [employeeNumber, setEmployeeNumber] = useState(initialData?.employee_number || '');
+    const [curp, setCurp] = useState(initialData?.curp || '');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!name || !department || !position || !employeeNumber) return;
-        const employeeData = { name, department, position, employee_number: employeeNumber };
+        const employeeData = { name, department, position, employee_number: employeeNumber, curp };
         onSave(employeeData, initialData ? initialData.id : null);
         onClose();
     };
@@ -34,6 +34,10 @@ const EmployeeForm: React.FC<{
             <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nombre Completo</label>
                 <input type="text" id="name" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" required />
+            </div>
+             <div>
+                <label htmlFor="curp" className="block text-sm font-medium text-gray-700">CURP (Opcional)</label>
+                <input type="text" id="curp" value={curp} onChange={e => setCurp(e.target.value)} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
             </div>
             <div>
                 <label htmlFor="department" className="block text-sm font-medium text-gray-700">Departamento</label>
@@ -111,7 +115,8 @@ const Employees: React.FC = () => {
 
     const filteredEmployees = useMemo(() => employees.filter(employee =>
         employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        employee.employee_number.toLowerCase().includes(searchTerm.toLowerCase())
+        employee.employee_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (employee.curp && employee.curp.toLowerCase().includes(searchTerm.toLowerCase()))
     ), [employees, searchTerm]);
 
     return (
@@ -121,7 +126,7 @@ const Employees: React.FC = () => {
                 <div className="flex items-center space-x-2">
                     <input
                         type="text"
-                        placeholder="Buscar por nombre o número..."
+                        placeholder="Buscar por nombre, número o CURP..."
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
@@ -145,6 +150,7 @@ const Employees: React.FC = () => {
                         <tr>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nº Empleado</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CURP</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Departamento</th>
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Puesto</th>
                             {hasPermission('manage_employees') && <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>}
@@ -152,12 +158,13 @@ const Employees: React.FC = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
-                            <tr><td colSpan={5} className="text-center py-4">Cargando...</td></tr>
+                            <tr><td colSpan={6} className="text-center py-4">Cargando...</td></tr>
                         ) : filteredEmployees.length > 0 ? (
                             filteredEmployees.map(employee => (
                                 <tr key={employee.id}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">{employee.employee_number}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{employee.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.curp || 'N/A'}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.department}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{employee.position}</td>
                                     {hasPermission('manage_employees') && (
@@ -174,7 +181,7 @@ const Employees: React.FC = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={hasPermission('manage_employees') ? 5 : 4} className="text-center py-4 text-gray-500">
+                                <td colSpan={hasPermission('manage_employees') ? 6 : 5} className="text-center py-4 text-gray-500">
                                     {employees.length > 0 ? 'No se encontraron empleados con ese criterio.' : 'No hay empleados registrados.'}
                                 </td>
                             </tr>

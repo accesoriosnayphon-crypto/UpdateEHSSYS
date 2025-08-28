@@ -14,6 +14,7 @@ interface EmployeeImportModalProps {
 type ParsedEmployee = {
     employee_number?: string;
     name?: string;
+    curp?: string;
     department?: string;
     position?: string;
 }
@@ -35,7 +36,7 @@ const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({ isOpen, onClo
     };
 
     const handleDownloadTemplate = () => {
-        const headers = ['employee_number', 'name', 'department', 'position'];
+        const headers = ['employee_number', 'name', 'curp', 'department', 'position'];
         const ws = XLSX.utils.json_to_sheet([{}], { header: headers });
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Empleados');
@@ -56,7 +57,7 @@ const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({ isOpen, onClo
                     const sheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[sheetName];
                     const json: ParsedEmployee[] = XLSX.utils.sheet_to_json(worksheet, {
-                         header: ["employee_number", "name", "department", "position"],
+                         header: ["employee_number", "name", "curp", "department", "position"],
                          range: 1 // Skip header row in data
                     });
 
@@ -65,10 +66,11 @@ const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({ isOpen, onClo
                         return;
                     }
 
-                    // Ensure employeeNumber is treated as string
+                    // Ensure employeeNumber and CURP are treated as strings
                     const formattedJson = json.map(row => ({
                         ...row,
-                        employee_number: row.employee_number ? String(row.employee_number) : undefined
+                        employee_number: row.employee_number ? String(row.employee_number) : undefined,
+                        curp: row.curp ? String(row.curp) : undefined
                     }));
 
                     setParsedData(formattedJson);
@@ -93,12 +95,12 @@ const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({ isOpen, onClo
         const existingNumbersSet = new Set(existingEmployeeNumbers);
 
         parsedData.forEach(row => {
-            const { employee_number, name, department, position } = row;
+            const { employee_number, name, department, position, curp } = row;
             if (employee_number && name && department && position) {
                 if (existingNumbersSet.has(employee_number)) {
                     skipped++;
                 } else {
-                    newEmployees.push({ employee_number, name, department, position });
+                    newEmployees.push({ employee_number, name, department, position, curp: curp || undefined });
                     existingNumbersSet.add(employee_number); // Add to set to handle duplicates within the same file
                 }
             } else {
@@ -147,7 +149,7 @@ const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({ isOpen, onClo
                                     <tr>
                                         <th className="px-3 py-2 text-left font-medium text-gray-500">Nº Empleado</th>
                                         <th className="px-3 py-2 text-left font-medium text-gray-500">Nombre</th>
-                                        <th className="px-3 py-2 text-left font-medium text-gray-500">Departamento</th>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-500">CURP</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -155,7 +157,7 @@ const EmployeeImportModal: React.FC<EmployeeImportModalProps> = ({ isOpen, onClo
                                         <tr key={index}>
                                             <td className="px-3 py-2 whitespace-nowrap">{row.employee_number}</td>
                                             <td className="px-3 py-2 whitespace-nowrap">{row.name}</td>
-                                            <td className="px-3 py-2 whitespace-nowrap">{row.department}</td>
+                                            <td className="px-3 py-2 whitespace-nowrap">{row.curp}</td>
                                         </tr>
                                     ))}
                                 </tbody>

@@ -1,5 +1,3 @@
-
-
 // --- Base Types ---
 export type Employee = {
   id: string;
@@ -7,6 +5,7 @@ export type Employee = {
   name: string;
   department: string;
   position: string;
+  curp?: string;
 };
 
 export type PpeItem = {
@@ -233,6 +232,11 @@ export interface PpeDeliveryWithDetails extends PpeDelivery {
   profiles: UserProfile | null; // For requestedByUser
   approvedByUser: UserProfile | null; // Custom alias for second profiles relation
 }
+
+export type PpeItemInUseResult = {
+  inUse: boolean;
+  message?: string;
+};
 
 export const PPE_ASSET_STATUSES = ['En Almacén', 'Asignado', 'En Mantenimiento', 'Fuera de Servicio'] as const;
 export type PpeAssetStatus = typeof PPE_ASSET_STATUSES[number];

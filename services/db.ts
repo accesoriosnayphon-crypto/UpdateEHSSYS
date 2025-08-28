@@ -246,6 +246,7 @@ const ppeCrud = createCrud<types.PpeItem>('ppe_items');
 export const getPpeItems = ppeCrud.getAll;
 export const addPpeItem = ppeCrud.add;
 export const updatePpeItem = ppeCrud.update;
+export const deletePpeItem = ppeCrud.delete;
 
 // PPE Deliveries
 const ppeDeliveryCrud = createCrud<types.PpeDelivery>('ppe_deliveries', 'PPE');
@@ -407,3 +408,25 @@ export const addAudit = async (data: Omit<types.Audit, 'id' | 'folio' | 'finding
 };
 export const updateAudit = auditCrud.update;
 export const deleteAudit = auditCrud.delete;
+
+export const isPpeItemInUse = async (ppeItemId: string): Promise<types.PpeItemInUseResult> => {
+    const rawDeliveries = await _getData<types.PpeDelivery[]>(`ehs_ppe_deliveries`, []);
+    const deliveryInUse = rawDeliveries.find(d => d.ppe_id === ppeItemId);
+    if (deliveryInUse) {
+        return { 
+            inUse: true, 
+            message: `El artículo está registrado en la entrega con folio ${deliveryInUse.folio}. No se puede eliminar.` 
+        };
+    }
+
+    const assets = await getPpeAssets();
+    const assetInUse = assets.find(a => a.ppe_item_id === ppeItemId);
+    if (assetInUse) {
+        return { 
+            inUse: true, 
+            message: `El artículo está asignado al activo rastreable con etiqueta ${assetInUse.asset_tag}. No se puede eliminar.` 
+        };
+    }
+
+    return { inUse: false };
+};

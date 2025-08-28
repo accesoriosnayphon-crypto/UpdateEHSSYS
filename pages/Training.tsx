@@ -1,8 +1,8 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Training, Employee, TrainingType } from '../types';
 import Modal from '../components/Modal';
-import { EyeIcon, TrashIcon } from '../constants';
+import TrainingReport from '../components/TrainingReport';
+import { EyeIcon, TrashIcon, PrinterIcon } from '../constants';
 import { useAuth } from '../Auth';
 import * as db from '../services/db';
 
@@ -129,8 +129,9 @@ const Training: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isAttendeesModalOpen, setIsAttendeesModalOpen] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
-    const { hasPermission } = useAuth();
+    const { hasPermission, appSettings } = useAuth();
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -158,6 +159,11 @@ const Training: React.FC = () => {
         setIsAttendeesModalOpen(true);
     };
     
+    const handleGenerateReport = (training: Training) => {
+        setSelectedTraining(training);
+        setIsReportModalOpen(true);
+    };
+
     const attendeesForSelectedTraining = useMemo(() => {
         if (!selectedTraining) return [];
         return (selectedTraining.attendees || []).map(id => employees.find(e => e.id === id)).filter(Boolean) as Employee[];
@@ -192,14 +198,17 @@ const Training: React.FC = () => {
                         ) : trainings.map(training => (
                             <tr key={training.id}>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{training.topic}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(training.date).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(training.date + 'T00:00:00').toLocaleDateString()}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{training.training_type}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{training.instructor}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{training.duration_hours}</td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{(training.attendees || []).length}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm space-x-4">
                                     <button onClick={() => handleViewAttendees(training)} className="text-gray-700 hover:text-primary" title="Ver Asistentes">
                                         <EyeIcon className="w-5 h-5 text-dark-text"/>
+                                    </button>
+                                    <button onClick={() => handleGenerateReport(training)} className="text-gray-700 hover:text-primary" title="Generar Reporte">
+                                        <PrinterIcon className="w-5 h-5 text-dark-text"/>
                                     </button>
                                 </td>
                             </tr>
@@ -226,6 +235,15 @@ const Training: React.FC = () => {
                            ))}
                         </ul>
                     </div>
+                )}
+            </Modal>
+             <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title="Constancia de Habilidades Laborales">
+                {selectedTraining && appSettings && (
+                    <TrainingReport 
+                        training={selectedTraining}
+                        attendees={attendeesForSelectedTraining}
+                        appSettings={appSettings}
+                    />
                 )}
             </Modal>
         </div>
