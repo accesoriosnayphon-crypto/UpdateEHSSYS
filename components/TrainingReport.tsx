@@ -96,7 +96,7 @@ const TrainingReport: React.FC<TrainingReportProps> = ({ training, attendees, ap
                                 <th className="text-left p-2 font-semibold text-gray-600 border border-gray-400">Nombre Completo</th>
                                 <th className="text-left p-2 font-semibold text-gray-600 border border-gray-400">Nº de Empleado</th>
                                 <th className="text-left p-2 font-semibold text-gray-600 border border-gray-400">CURP</th>
-                                <th className="text-left p-2 font-semibold text-gray-600 border border-gray-400 w-1/3">Firma</th>
+                                <th className="text-left p-2 font-semibold text-gray-600 border border-gray-400">Puesto</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -105,7 +105,7 @@ const TrainingReport: React.FC<TrainingReportProps> = ({ training, attendees, ap
                                     <td className="p-2 border border-gray-400">{employee.name}</td>
                                     <td className="p-2 border border-gray-400">{employee.employee_number}</td>
                                     <td className="p-2 border border-gray-400">{employee.curp || 'N/A'}</td>
-                                    <td className="p-2 border border-gray-400 h-12"></td>
+                                    <td className="p-2 border border-gray-400">{employee.position}</td>
                                 </tr>
                             ))}
                         </tbody>
