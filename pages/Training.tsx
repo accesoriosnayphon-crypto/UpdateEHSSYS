@@ -237,7 +237,7 @@ const Training: React.FC = () => {
                     </div>
                 )}
             </Modal>
-             <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title="Constancia de Habilidades Laborales">
+             <Modal isOpen={isReportModalOpen} onClose={() => setIsReportModalOpen(false)} title="Reporte de Asistencia">
                 {selectedTraining && appSettings && (
                     <TrainingReport 
                         training={selectedTraining}

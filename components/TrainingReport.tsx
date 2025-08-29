@@ -17,21 +17,53 @@ const TrainingReport: React.FC<TrainingReportProps> = ({ training, attendees, ap
             <style>
                 {`
                 @media print {
+                    /* General setup to isolate print content */
                     body * {
                         visibility: hidden;
                     }
                     #print-section-training, #print-section-training * {
                         visibility: visible;
                     }
+                    
+                    /* Overcome modal limitations for printing */
+                    .fixed {
+                        position: static !important;
+                    }
+                    div[class*="max-h-"], .max-h-\\[90vh\\] {
+                        max-height: none !important;
+                    }
+                    div[class*="overflow-y-auto"] {
+                        overflow: visible !important;
+                    }
+                    
+                    /* Position the content for printing */
                     #print-section-training {
                         position: absolute;
                         left: 0;
                         top: 0;
                         width: 100%;
+                        margin: 0;
+                        padding: 1.5rem;
                         font-size: 10pt;
                     }
+                    
                     .no-print {
                         display: none;
+                    }
+
+                    /* Table page break handling */
+                    table {
+                        page-break-inside: auto;
+                    }
+                    tr {
+                        page-break-inside: avoid;
+                        page-break-after: auto;
+                    }
+                    thead {
+                        display: table-header-group; /* Repeat table header on each page */
+                    }
+                    section, footer {
+                        page-break-inside: avoid;
                     }
                 }
                 `}
@@ -40,7 +72,7 @@ const TrainingReport: React.FC<TrainingReportProps> = ({ training, attendees, ap
                 <header className="flex justify-between items-center border-b pb-4 mb-4">
                     <div>
                         {appSettings?.company_logo && <img src={appSettings.company_logo} alt={`${appSettings.company_name} Logo`} className="h-16 w-auto mb-2" />}
-                        <h1 className="text-2xl font-bold text-gray-900">Constancia de Habilidades Laborales</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">Reporte de Asistencia</h1>
                         <p className="text-gray-600">{appSettings?.company_name}</p>
                     </div>
                 </header>
