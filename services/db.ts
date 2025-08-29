@@ -55,6 +55,7 @@ const INITIAL_SETUP_DATA = {
     work_permits: [] as types.WorkPermit[],
     wastes: [] as types.Waste[],
     waste_logs: [] as types.WasteLog[],
+    respel_records: [] as types.RespelRecord[],
     capas: [] as types.Capa[],
     jhas: [
         {
@@ -346,6 +347,20 @@ export const deleteWaste = async (id: string) => {
 const wasteLogCrud = createCrud<types.WasteLog>('waste_logs', 'MAN');
 export const getWasteLogs = wasteLogCrud.getAll;
 export const addWasteLog = wasteLogCrud.add;
+
+// Respel Records
+const respelCrud = createCrud<types.RespelRecord>('respel_records', 'RESPEL');
+export const getRespelRecords = respelCrud.getAll;
+export const addRespelRecord = async (data: Omit<types.RespelRecord, 'id' | 'folio' | 'creation_date'>) => {
+    const newData = {
+        ...data,
+        creation_date: new Date().toISOString().split('T')[0],
+    };
+    return respelCrud.add(newData as Omit<types.RespelRecord, 'id'>);
+};
+export const updateRespelRecord = respelCrud.update;
+export const deleteRespelRecord = respelCrud.delete;
+
 
 // CAPAs
 const capaCrud = createCrud<types.Capa>('capas', 'CAPA');

@@ -148,6 +148,28 @@ export type WasteLog = {
   recorded_by_user_id: string;
 };
 
+export type RespelRecord = {
+  id: string;
+  folio: string;
+  creation_date: string;
+  waste_name: string;
+  waste_description: string;
+  waste_type: 'Sólido' | 'Líquido' | 'Gaseoso';
+  quantity: number;
+  unit: 'Kg' | 'L';
+  area: string;
+  disposal_provider: string;
+  notes: string | null;
+  generator_user_id: string;
+  // CRETIB properties
+  is_corrosive: boolean;
+  is_reactive: boolean;
+  is_explosive: boolean;
+  is_flammable: boolean;
+  is_toxic: boolean;
+  is_biologic: boolean;
+};
+
 export type Capa = {
   id: string;
   folio: string;
@@ -322,6 +344,9 @@ export const WASTE_TYPES = ['Peligroso', 'No Peligroso', 'Reciclable'] as const;
 export type WasteType = typeof WASTE_TYPES[number];
 export const WASTE_UNITS = ['Kg', 'L', 'Unidades', 'Tambores'] as const;
 export type WasteUnit = typeof WASTE_UNITS[number];
+export const RESPEL_UNITS = ['Kg', 'L'] as const;
+export type RespelUnit = typeof RESPEL_UNITS[number];
+
 
 export type AuditFindingType = 'No Conformidad' | 'Observación' | 'Oportunidad de Mejora';
 export const AUDIT_FINDING_TYPES: AuditFindingType[] = ['No Conformidad', 'Observación', 'Oportunidad de Mejora'];
@@ -396,6 +421,7 @@ export type Permission =
   | 'manage_activities'
   | 'manage_work_permits'
   | 'manage_waste'
+  | 'manage_respel'
   | 'manage_audits'
   | 'manage_capa'
   | 'view_reports'
@@ -416,6 +442,7 @@ export const PERMISSIONS: { id: Permission; label: string }[] = [
   { id: 'manage_activities', label: 'Gestionar Actividades' },
   { id: 'manage_work_permits', label: 'Gestionar Permisos de Trabajo' },
   { id: 'manage_waste', label: 'Gestionar Residuos' },
+  { id: 'manage_respel', label: 'Gestionar Formatos RESPEL' },
   { id: 'manage_audits', label: 'Gestionar Auditorías'},
   { id: 'manage_capa', label: 'Gestionar Acciones CAPA' },
   { id: 'view_reports', label: 'Ver Reportes' },

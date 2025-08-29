@@ -18,6 +18,7 @@ import RiskManagement from './pages/RiskManagement';
 import Chemicals from './pages/Chemicals';
 import WorkPermits from './pages/WorkPermits';
 import WasteManagement from './pages/WasteManagement';
+import Respel from './pages/Respel';
 import Settings from './pages/Settings';
 import Audits from './pages/Audits';
 import History from './pages/History';
@@ -50,6 +51,7 @@ const navLinkGroups = [
             { permission: 'manage_safety_inspections' as Permission, path: '/safety-inspections', label: 'Insp. de Seguridad', icon: <ShieldExclamationIcon className="w-6 h-6" /> },
             { permission: 'manage_chemicals' as Permission, path: '/chemicals', label: 'Inventario Químico', icon: <VialIcon className="w-6 h-6" /> },
             { permission: 'manage_waste' as Permission, path: '/waste-management', label: 'Gestión de Residuos', icon: <ArrowPathIcon className="w-6 h-6" /> },
+            { permission: 'manage_respel' as Permission, path: '/respel', label: 'Formatos RESPEL', icon: <ArchiveBoxIcon className="w-6 h-6" /> },
         ]
     },
     {
@@ -197,6 +199,7 @@ const ProtectedLayout: React.FC = () => {
                         {hasPermission('manage_chemicals') && <Route path="/chemicals" element={<Chemicals />} />}
                         {hasPermission('manage_work_permits') && <Route path="/work-permits" element={<WorkPermits />} />}
                         {hasPermission('manage_waste') && <Route path="/waste-management" element={<WasteManagement />} />}
+                        {hasPermission('manage_respel') && <Route path="/respel" element={<Respel />} />}
                         {hasPermission('manage_activities') && <Route path="/activities" element={<Activities />} />}
                         {hasPermission('manage_audits') && <Route path="/audits" element={<Audits />} />}
                         {hasPermission('manage_capa') && <Route path="/capa" element={<CAPA />} />}
