@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { RespelRecord, UserProfile, RespelUnit, RESPEL_UNITS } from '../types';
 import { useAuth } from '../Auth';
 import Modal from '../components/Modal';
-import { PencilIcon, TrashIcon, ClipboardDocumentListIcon, TagIcon } from '../constants';
+import { PencilIcon, TrashIcon, ClipboardDocumentListIcon, TagIcon, ArrowDownTrayIcon } from '../constants';
 import RespelDocument from '../components/RespelDocument';
 import RespelLabel from '../components/RespelLabel';
 import * as db from '../services/db';
+import * as XLSX from 'xlsx';
 
 type RespelRecordWithDetails = RespelRecord & {
     generatorUser?: UserProfile;
@@ -196,15 +197,43 @@ const Respel: React.FC = () => {
         setIsLabelModalOpen(true);
     };
 
+    const handleExport = () => {
+        const dataToExport = records.map(r => ({
+            "Folio": r.folio,
+            "Fecha de Creación": new Date(r.creation_date).toLocaleDateString(),
+            "Nombre del Residuo": r.waste_name,
+            "Descripción": r.waste_description,
+            "Tipo": r.waste_type,
+            "Cantidad": r.quantity,
+            "Unidad": r.unit,
+            "Área de Generación": r.area,
+            "Proveedor de Disposición": r.disposal_provider,
+            "Generado Por": users.find(u => u.id === r.generator_user_id)?.full_name || 'N/A',
+            "Notas": r.notes,
+            ...Object.fromEntries(CRETIB_PROPERTIES.map(p => [p.label, r[p.key] ? 'Sí' : 'No']))
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Formatos_RESPEL");
+        XLSX.writeFile(wb, "reporte_respel.xlsx");
+    };
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-dark-text">Formatos de Residuos Peligrosos (RESPEL)</h2>
-                {hasPermission('manage_respel') && (
-                    <button onClick={() => { setEditingRecord(null); setIsFormOpen(true); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
-                        + Crear Formato RESPEL
+                <div className="flex items-center space-x-2">
+                    <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2">
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Exportar</span>
                     </button>
-                )}
+                    {hasPermission('manage_respel') && (
+                        <button onClick={() => { setEditingRecord(null); setIsFormOpen(true); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
+                            + Crear Formato RESPEL
+                        </button>
+                    )}
+                </div>
             </div>
             <div className="overflow-x-auto">
                  <table className="min-w-full divide-y divide-gray-200">

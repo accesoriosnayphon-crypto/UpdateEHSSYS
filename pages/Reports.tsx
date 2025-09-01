@@ -1,28 +1,13 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Incident, Employee } from '../types';
-import * as db from '../services/db';
+import { useData } from '../contexts/DataContext';
 
 const Reports: React.FC = () => {
-    const [incidents, setIncidents] = useState<Incident[]>([]);
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            const incidentsRes = await db.getIncidents();
-            const employeesRes = await db.getEmployees();
-            
-            setIncidents(incidentsRes);
-            setEmployees(employeesRes);
-            
-            setLoading(false);
-        };
-        fetchData();
-    }, []);
-
+    const { incidents, employees, loading } = useData();
+    
     const incidentsByMonth = incidents.reduce((acc, incident) => {
         const month = new Date(incident.date).toLocaleString('es-ES', { month: 'short', year: 'numeric' });
         const found = acc.find(item => item.name === month);

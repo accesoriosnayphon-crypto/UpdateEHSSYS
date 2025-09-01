@@ -5,6 +5,8 @@ import EmployeeImportModal from '../components/EmployeeImportModal';
 import { PencilIcon, TrashIcon, ArrowDownTrayIcon } from '../constants';
 import { useAuth } from '../Auth';
 import * as db from '../services/db';
+import { useData } from '../contexts/DataContext';
+import * as XLSX from 'xlsx';
 
 const EmployeeForm: React.FC<{
     onSave: (employee: Omit<Employee, 'id'>, id: string | null) => void;
@@ -56,24 +58,12 @@ const EmployeeForm: React.FC<{
 };
 
 const Employees: React.FC = () => {
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { employees, loading, refreshData } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const { hasPermission } = useAuth();
-
-    const fetchEmployees = async () => {
-        setLoading(true);
-        const data = await db.getEmployees();
-        setEmployees(data);
-        setLoading(false);
-    };
-
-    useEffect(() => {
-        fetchEmployees();
-    }, []);
     
     const handleSaveEmployee = async (employeeData: Omit<Employee, 'id'>, id: string | null) => {
         if (id) {
@@ -81,7 +71,7 @@ const Employees: React.FC = () => {
         } else {
             await db.addEmployee(employeeData);
         }
-        fetchEmployees(); // Refresh data
+        refreshData();
         setIsModalOpen(false);
         setEditingEmployee(null);
     };
@@ -93,7 +83,7 @@ const Employees: React.FC = () => {
        }
        await db.addMultipleEmployees(newEmployees);
        alert(`${newEmployees.length} empleados importados exitosamente.`);
-       fetchEmployees();
+       refreshData();
     };
 
     const handleAddNew = () => {
@@ -109,7 +99,7 @@ const Employees: React.FC = () => {
     const handleDelete = async (employeeId: string) => {
         if (window.confirm('¿Estás seguro de que quieres eliminar a este empleado?')) {
             await db.deleteEmployee(employeeId);
-            fetchEmployees();
+            refreshData();
         }
     };
 
@@ -118,6 +108,21 @@ const Employees: React.FC = () => {
         employee.employee_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (employee.curp && employee.curp.toLowerCase().includes(searchTerm.toLowerCase()))
     ), [employees, searchTerm]);
+    
+    const handleExport = () => {
+        const dataToExport = filteredEmployees.map(emp => ({
+            "Número de Empleado": emp.employee_number,
+            "Nombre Completo": emp.name,
+            "CURP": emp.curp || '',
+            "Departamento": emp.department,
+            "Puesto": emp.position,
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Empleados");
+        XLSX.writeFile(wb, "lista_empleados.xlsx");
+    };
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg">
@@ -131,6 +136,10 @@ const Employees: React.FC = () => {
                         onChange={e => setSearchTerm(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
+                    <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2 flex-shrink-0">
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Exportar</span>
+                    </button>
                     {hasPermission('manage_employees') && (
                         <>
                             <button onClick={() => setIsImportModalOpen(true)} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2 flex-shrink-0">

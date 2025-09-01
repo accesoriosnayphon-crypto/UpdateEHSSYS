@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Capa, UserProfile, CapaStatus, CapaType, CAPA_STATUSES, CAPA_TYPES } from '../types';
 import { useAuth } from '../Auth';
 import Modal from '../components/Modal';
-import { PencilIcon, TrashIcon, CheckCircleIcon, SparklesIcon } from '../constants';
+import { PencilIcon, TrashIcon, CheckCircleIcon, SparklesIcon, ArrowDownTrayIcon } from '../constants';
 import { generateCapaSuggestions } from '../services/geminiService';
 import * as db from '../services/db';
+import * as XLSX from 'xlsx';
 
 const CapaForm: React.FC<{
     onSave: (capa: Omit<Capa, 'id' | 'folio' | 'status' | 'creation_date' | 'close_date' | 'verification_notes'>, id: string | null) => void;
@@ -201,15 +202,41 @@ const CAPA: React.FC = () => {
         }
     };
 
+    const handleExport = () => {
+        const dataToExport = capas.map(c => ({
+            "Folio": c.folio,
+            "Fecha de Creación": new Date(c.creation_date).toLocaleDateString(),
+            "Fecha Compromiso": new Date(c.commitment_date).toLocaleDateString(),
+            "Fecha de Cierre": c.close_date ? new Date(c.close_date).toLocaleDateString() : '',
+            "Origen": c.source,
+            "Descripción": c.description,
+            "Plan de Acción": c.plan,
+            "Tipo": c.type,
+            "Estado": c.status,
+            "Responsable": getUserName(c.responsible_user_id),
+            "Notas de Verificación": c.verification_notes,
+        }));
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Acciones_CAPA");
+        XLSX.writeFile(wb, "reporte_capa.xlsx");
+    };
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-dark-text">Acciones Correctivas y Preventivas</h2>
-                {hasPermission('manage_capa') && (
-                    <button onClick={() => { setEditingCapa(null); setIsFormModalOpen(true); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
-                        + Nueva Acción
+                <div className="flex items-center space-x-2">
+                    <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2">
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Exportar</span>
                     </button>
-                )}
+                    {hasPermission('manage_capa') && (
+                        <button onClick={() => { setEditingCapa(null); setIsFormModalOpen(true); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
+                            + Nueva Acción
+                        </button>
+                    )}
+                </div>
             </div>
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">

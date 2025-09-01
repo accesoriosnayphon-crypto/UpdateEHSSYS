@@ -1,15 +1,18 @@
 import React from 'react';
 import { useAuth } from '../Auth';
-import { WorkPermit, User, Jha, Employee } from '../types';
+// FIX: Import Contractor type
+import { WorkPermit, User, Jha, Employee, Contractor } from '../types';
 
 interface WorkPermitDocumentProps {
   permit: WorkPermit;
   users: User[];
   jhas: Jha[];
   employees: Employee[];
+  // FIX: Add contractors prop
+  contractors: Contractor[];
 }
 
-const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, jhas, employees }) => {
+const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, jhas, employees, contractors }) => {
     const { appSettings } = useAuth();
     
     const handlePrint = () => {
@@ -31,6 +34,8 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
     const approver = users.find(u => u.id === permit.approver_user_id);
     const closer = users.find(u => u.id === permit.closer_user_id);
     const linkedJha = jhas.find(j => j.id === permit.jha_id);
+    // FIX: Find the contractor using the contractor_id from the permit
+    const contractor = contractors.find(c => c.id === permit.contractor_id);
 
     return (
         <div className="text-dark-text">
@@ -128,9 +133,10 @@ const WorkPermitDocument: React.FC<WorkPermitDocumentProps> = ({ permit, users, 
                 {permit.work_type === 'Externo' && (
                 <section className="mb-4">
                     <h2 className="text-lg font-bold border-b mb-2 pb-1 text-gray-900">1A. Información del Contratista</h2>
+                    {/* FIX: Use contractor object instead of deprecated fields */}
                     <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                        <div><strong>Empresa Contratista:</strong> {permit.provider_name || 'N/A'}</div>
-                        <div className="col-span-2"><strong>Datos Generales:</strong> {permit.provider_details || 'N/A'}</div>
+                        <div><strong>Empresa Contratista:</strong> {contractor?.name || 'N/A'}</div>
+                        <div className="col-span-2"><strong>Datos Generales:</strong> Contacto: {contractor?.contact_person || 'N/A'}, Tel: {contractor?.contact_phone || 'N/A'}</div>
                     </div>
                 </section>
                 )}

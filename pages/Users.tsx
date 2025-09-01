@@ -1,10 +1,12 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserLevel, Permission, PERMISSIONS, UserProfile } from '../types';
 import Modal from '../components/Modal';
 import { PencilIcon, TrashIcon } from '../constants';
 import { useAuth } from '../Auth';
 import * as db from '../services/db';
+import { useData } from '../contexts/DataContext';
 
 const UserForm: React.FC<{
     onSave: (user: Omit<UserProfile, 'id'>, id: string | null) => void;
@@ -115,22 +117,10 @@ const UserForm: React.FC<{
 };
 
 const Users: React.FC = () => {
-    const [users, setUsers] = useState<UserProfile[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { users, loading, refreshData } = useData();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
     const { hasPermission, currentUser } = useAuth();
-
-    const fetchUsers = useCallback(async () => {
-        setLoading(true);
-        const data = await db.getUsers();
-        setUsers(data);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        fetchUsers();
-    }, [fetchUsers]);
 
     const handleSaveUser = async (profileData: Omit<UserProfile, 'id'>, id: string | null) => {
         if (id) {
@@ -140,7 +130,7 @@ const Users: React.FC = () => {
              return;
         }
 
-        fetchUsers();
+        refreshData();
         setIsModalOpen(false);
         setEditingUser(null);
     };
@@ -161,7 +151,7 @@ const Users: React.FC = () => {
        }
        if (window.confirm('¿Estás seguro de que quieres eliminar a este usuario? Esta acción es irreversible.')) {
            await db.deleteUser(userId);
-           fetchUsers();
+           refreshData();
        }
     };
 

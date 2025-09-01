@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { WorkPermit, UserProfile, Jha, WorkPermitStatus, WORK_PERMIT_TYPES, Employee, AuthorizedWorker } from '../types';
+import { WorkPermit, UserProfile, Jha, WorkPermitStatus, WORK_PERMIT_TYPES, Employee, AuthorizedWorker, Contractor, ContractorDocument } from '../types';
 import { useAuth } from '../Auth';
 import Modal from '../components/Modal';
 import { PencilIcon, TrashIcon, ClipboardDocumentListIcon, CheckCircleIcon } from '../constants';
 import WorkPermitDocument from '../components/WorkPermitDocument';
 import * as db from '../services/db';
+import { useData } from '../contexts/DataContext';
 
 // Componente para listas dinámicas de ítems
 const DynamicListInput: React.FC<{
@@ -71,7 +72,9 @@ const WorkPermitForm: React.FC<{
     jhas: Jha[];
     currentUser: UserProfile;
     employees: Employee[];
-}> = ({ onSave, onClose, initialData, users, jhas, currentUser, employees }) => {
+    contractors: Contractor[];
+    contractorDocuments: ContractorDocument[];
+}> = ({ onSave, onClose, initialData, users, jhas, currentUser, employees, contractors, contractorDocuments }) => {
     
     const [newWorkerName, setNewWorkerName] = useState('');
 
@@ -92,8 +95,9 @@ const WorkPermitForm: React.FC<{
         close_date: initialData?.close_date || null,
         notes: initialData?.notes || '',
         work_type: initialData?.work_type || 'Interno',
-        provider_name: initialData?.provider_name || '',
-        provider_details: initialData?.provider_details || '',
+        contractor_id: initialData?.contractor_id || null,
+        provider_name: initialData?.provider_name || '', // Kept for legacy compatibility if needed
+        provider_details: initialData?.provider_details || '', // Kept for legacy compatibility if needed
         authorized_workers: initialData?.authorized_workers || [],
         final_review_accident: initialData?.final_review_accident || null,
         final_review_lockout_tagout: initialData?.final_review_lockout_tagout || null,
@@ -122,6 +126,15 @@ const WorkPermitForm: React.FC<{
             e.employee_number?.toLowerCase().includes(requesterSearch.toLowerCase())
         ).slice(0, 5)
         : [];
+        
+    const validContractors = useMemo(() => {
+        const today = new Date().toISOString().split('T')[0];
+        return contractors.filter(c => {
+            if (c.status !== 'Activo') return false;
+            const docs = contractorDocuments.filter(d => d.contractor_id === c.id);
+            return !docs.some(d => d.expiry_date < today);
+        });
+    }, [contractors, contractorDocuments]);
 
     const handleSelectRequester = (employee: Employee) => {
         setRequesterEmployeeId(employee.id);
@@ -182,8 +195,9 @@ const WorkPermitForm: React.FC<{
             ...formState,
             requester_employee_id: requesterEmployeeId,
             jha_id: formState.jha_id || null,
-            provider_name: formState.work_type === 'Interno' ? null : formState.provider_name,
-            provider_details: formState.work_type === 'Interno' ? null : formState.provider_details,
+            contractor_id: formState.work_type === 'Interno' ? null : formState.contractor_id,
+            provider_name: null, // Deprecated, use contractor_id
+            provider_details: null, // Deprecated
             authorized_workers: finalWorkers,
         };
         onSave(dataToSave, initialData?.id || null);
@@ -333,32 +347,21 @@ const WorkPermitForm: React.FC<{
             </div>
 
             {formState.work_type === 'Externo' && (
-                <div className="p-4 border border-yellow-300 bg-yellow-50 rounded-md space-y-4">
-                    <h4 className="font-semibold text-yellow-800">Información del Contratista</h4>
-                    <div>
-                        <label htmlFor="provider_name" className="block text-sm font-medium text-gray-700">Nombre de la Empresa Contratista</label>
-                        <input
-                            id="provider_name"
-                            name="provider_name"
-                            type="text"
-                            value={formState.provider_name || ''}
-                            onChange={handleChange}
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="provider_details" className="block text-sm font-medium text-gray-700">Datos Generales (Contacto, # de personas, etc.)</label>
-                        <textarea
-                            id="provider_details"
-                            name="provider_details"
-                            value={formState.provider_details || ''}
-                            onChange={handleChange}
-                            rows={3}
-                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                        />
-                    </div>
-                </div>
+                 <div className="p-4 border border-yellow-300 bg-yellow-50 rounded-md">
+                    <label htmlFor="contractor_id" className="block text-sm font-medium text-yellow-800">Seleccione Contratista</label>
+                    <select
+                        id="contractor_id"
+                        name="contractor_id"
+                        value={formState.contractor_id || ''}
+                        onChange={handleChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md text-dark-text"
+                        required
+                    >
+                        <option value="">-- Contratistas Válidos --</option>
+                        {validContractors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    {validContractors.length === 0 && <p className="text-xs text-red-700 mt-1">No hay contratistas activos con documentación vigente.</p>}
+                 </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -462,11 +465,7 @@ const ClosePermitForm: React.FC<{
 
 
 const WorkPermits: React.FC = () => {
-    const [permits, setPermits] = useState<WorkPermit[]>([]);
-    const [users, setUsers] = useState<UserProfile[]>([]);
-    const [jhas, setJhas] = useState<Jha[]>([]);
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { workPermits: permits, users, jhas, employees, contractors, contractorDocuments, loading, refreshData } = useData();
     const { currentUser, hasPermission } = useAuth();
     
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -476,24 +475,6 @@ const WorkPermits: React.FC = () => {
     const [viewingPermit, setViewingPermit] = useState<WorkPermit | null>(null);
     const [closingPermit, setClosingPermit] = useState<WorkPermit | null>(null);
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        const [permitsRes, usersRes, jhasRes, employeesRes] = await Promise.all([
-            db.getWorkPermits(),
-            db.getUsers(),
-            db.getJhas(),
-            db.getEmployees(),
-        ]);
-        setPermits(permitsRes);
-        setUsers(usersRes);
-        setJhas(jhasRes);
-        setEmployees(employeesRes);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
 
     const handleSavePermit = async (data: Omit<WorkPermit, 'id' | 'folio'>, id: string | null) => {
         if (id) {
@@ -501,7 +482,7 @@ const WorkPermits: React.FC = () => {
         } else {
             await db.addWorkPermit({ ...data, folio: '' });
         }
-        fetchData();
+        refreshData();
         setIsFormOpen(false);
         setEditingPermit(null);
     };
@@ -516,7 +497,7 @@ const WorkPermits: React.FC = () => {
             final_review_lockout_tagout: lockoutApplied,
             final_review_comments: comments,
         });
-        fetchData();
+        refreshData();
         setIsCloseModalOpen(false);
         setClosingPermit(null);
     };
@@ -527,17 +508,18 @@ const WorkPermits: React.FC = () => {
         if (newStatus === 'Rechazado') updates.approver_user_id = currentUser!.id;
 
         await db.updateWorkPermit(permit.id, updates);
-        fetchData();
+        refreshData();
     };
 
     const handleDeletePermit = async (id: string) => {
         if (window.confirm('¿Estás seguro de eliminar este permiso?')) {
             await db.deleteWorkPermit(id);
-            fetchData();
+            refreshData();
         }
     };
     
     const getEmployeeName = (id: string | null) => employees.find(e => e.id === id)?.name || 'N/A';
+    const getContractorName = (id: string | null) => contractors.find(c => c.id === id)?.name || 'N/A';
 
     const getStatusClass = (status: WorkPermitStatus) => {
         switch(status) {
@@ -567,7 +549,7 @@ const WorkPermits: React.FC = () => {
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Folio</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Título</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Solicitante</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Responsable</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
                             {hasPermission('manage_work_permits') && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>}
                         </tr>
@@ -580,7 +562,12 @@ const WorkPermits: React.FC = () => {
                                 <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-500">{permit.folio}</td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{permit.title}</td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{permit.type}</td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{getEmployeeName(permit.requester_employee_id)}</td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {permit.work_type === 'Externo' ? 
+                                        <span className="font-semibold text-purple-700">{getContractorName(permit.contractor_id)}</span> : 
+                                        getEmployeeName(permit.requester_employee_id)
+                                    }
+                                </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusClass(permit.status)}`}>{permit.status}</span>
                                 </td>
@@ -610,12 +597,22 @@ const WorkPermits: React.FC = () => {
 
             {currentUser && hasPermission('manage_work_permits') && (
                 <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title={editingPermit ? 'Editar Permiso de Trabajo' : 'Solicitar Permiso de Trabajo'}>
-                    <WorkPermitForm onSave={handleSavePermit} onClose={() => setIsFormOpen(false)} initialData={editingPermit} users={users} jhas={jhas} currentUser={currentUser} employees={employees} />
+                    <WorkPermitForm 
+                        onSave={handleSavePermit} 
+                        onClose={() => setIsFormOpen(false)} 
+                        initialData={editingPermit} 
+                        users={users} 
+                        jhas={jhas} 
+                        currentUser={currentUser} 
+                        employees={employees} 
+                        contractors={contractors}
+                        contractorDocuments={contractorDocuments}
+                    />
                 </Modal>
             )}
 
             <Modal isOpen={isDocumentOpen} onClose={() => setIsDocumentOpen(false)} title={`Permiso de Trabajo - ${viewingPermit?.folio || ''}`}>
-                {viewingPermit && <WorkPermitDocument permit={viewingPermit} users={users} jhas={jhas} employees={employees} />}
+                {viewingPermit && <WorkPermitDocument permit={viewingPermit} users={users} jhas={jhas} employees={employees} contractors={contractors} />}
             </Modal>
             
             <Modal isOpen={isCloseModalOpen} onClose={() => setIsCloseModalOpen(false)} title={`Cerrar Permiso - ${closingPermit?.folio}`}>

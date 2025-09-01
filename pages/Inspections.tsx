@@ -1,10 +1,13 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Inspection, Employee, ViolationType, VIOLATION_TYPES } from '../types';
 import Modal from '../components/Modal';
-import { EyeIcon } from '../constants';
+import { EyeIcon, ArrowDownTrayIcon } from '../constants';
 import { useAuth } from '../Auth';
 import * as db from '../services/db';
+import { useData } from '../contexts/DataContext';
+import * as XLSX from 'xlsx';
 
 const InspectionForm: React.FC<{
     onSave: (inspection: Omit<Inspection, 'id'>) => void;
@@ -180,33 +183,16 @@ const InspectionDetails: React.FC<{ inspection: Inspection, employeeName: string
 };
 
 const Inspections: React.FC = () => {
-    const [inspections, setInspections] = useState<Inspection[]>([]);
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { inspections, employees, loading, refreshData } = useData();
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [selectedInspection, setSelectedInspection] = useState<Inspection | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const { hasPermission } = useAuth();
     
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        const [inspectionsRes, employeesRes] = await Promise.all([
-            db.getInspections(),
-            db.getEmployees()
-        ]);
-        setInspections(inspectionsRes);
-        setEmployees(employeesRes);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
     const handleSaveInspection = async (inspectionData: Omit<Inspection, 'id'>) => {
         await db.addInspection(inspectionData);
-        fetchData();
+        refreshData();
         setIsFormModalOpen(false);
     };
 
@@ -228,11 +214,26 @@ const Inspections: React.FC = () => {
         );
     });
 
+    const handleExport = () => {
+        const dataToExport = filteredInspections.map(item => ({
+            "Fecha": new Date(item.date).toLocaleString(),
+            "Empleado": getEmployeeName(item.employee_id),
+            "Hubo Violación": item.violation ? 'Sí' : 'No',
+            "Tipos de Violación": item.violations ? item.violations.join(', ') : '',
+            "Observaciones": item.observations || '',
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Inspecciones_EPP");
+        XLSX.writeFile(wb, "reporte_inspecciones_epp.xlsx");
+    };
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
                 <h2 className="text-xl font-bold text-dark-text">Inspecciones de EPP</h2>
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
                     <input
                         type="text"
                         placeholder="Buscar por empleado..."
@@ -240,6 +241,10 @@ const Inspections: React.FC = () => {
                         onChange={e => setSearchTerm(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
+                    <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2 flex-shrink-0">
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Exportar</span>
+                    </button>
                     {hasPermission('manage_inspections') && (
                         <button onClick={() => setIsFormModalOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark flex-shrink-0">
                             + Nueva Inspección

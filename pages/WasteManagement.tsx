@@ -1,11 +1,13 @@
 
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Waste, WasteLog, WasteType, WASTE_TYPES, WasteUnit, WASTE_UNITS, UserProfile } from '../types';
 import { useAuth } from '../Auth';
 import Modal from '../components/Modal';
-import { PencilIcon, TrashIcon, ClipboardDocumentListIcon } from '../constants';
+import { PencilIcon, TrashIcon, ClipboardDocumentListIcon, ArrowDownTrayIcon } from '../constants';
 import WasteDisposalDocument from '../components/WasteDisposalDocument';
 import * as db from '../services/db';
+import * as XLSX from 'xlsx';
 
 type WasteLogWithDetails = WasteLog & {
     waste?: Waste;
@@ -221,6 +223,38 @@ const WasteManagement: React.FC = () => {
         })).filter(log => log.waste);
     }, [logs, wastes, users]);
 
+    const handleExport = () => {
+        if (view === 'catalog') {
+            const dataToExport = wastes.map(w => ({
+                "Nombre del Residuo": w.name,
+                "Tipo": w.type,
+                "Ubicación de Almacenamiento": w.storage_location,
+                "Método de Disposición": w.disposal_method,
+            }));
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Catalogo_Residuos");
+            XLSX.writeFile(wb, "catalogo_residuos.xlsx");
+        } else { // logs view
+            const dataToExport = logsWithDetails.map(log => ({
+                "Folio": log.folio,
+                "Fecha de Disposición": new Date(log.date).toLocaleDateString(),
+                "Residuo": log.waste?.name,
+                "Tipo de Residuo": log.waste?.type,
+                "Cantidad": log.quantity,
+                "Unidad": log.unit,
+                "Empresa Transportista": log.disposal_company,
+                "Nº Manifiesto": log.manifest_number,
+                "Costo (USD)": log.cost,
+                "Registrado Por": log.user?.full_name,
+            }));
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Bitacora_Disposicion");
+            XLSX.writeFile(wb, "bitacora_disposicion_residuos.xlsx");
+        }
+    };
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
@@ -232,17 +266,23 @@ const WasteManagement: React.FC = () => {
                         Bitácora de Disposición
                     </button>
                 </div>
-                {hasPermission('manage_waste') && (
-                    view === 'catalog' ? (
-                        <button onClick={() => { setEditingWaste(null); setIsWasteFormOpen(true); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
-                            + Nuevo Tipo de Residuo
-                        </button>
-                    ) : (
-                        <button onClick={() => setIsLogFormOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
-                            + Registrar Disposición
-                        </button>
-                    )
-                )}
+                <div className="flex items-center space-x-2">
+                    <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2">
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Exportar Vista</span>
+                    </button>
+                    {hasPermission('manage_waste') && (
+                        view === 'catalog' ? (
+                            <button onClick={() => { setEditingWaste(null); setIsWasteFormOpen(true); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
+                                + Nuevo Tipo de Residuo
+                            </button>
+                        ) : (
+                            <button onClick={() => setIsLogFormOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
+                                + Registrar Disposición
+                            </button>
+                        )
+                    )}
+                </div>
             </div>
 
             {view === 'catalog' && (

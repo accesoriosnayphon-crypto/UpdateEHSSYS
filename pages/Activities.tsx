@@ -1,12 +1,14 @@
 
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Activity, ActivityPriority, ActivityStatus, ActivityType, UserProfile, Comment, ActivityWithComments } from '../types';
 import { useAuth } from '../Auth';
 import Modal from '../components/Modal';
-import { PencilIcon, TrashIcon, DocumentCheckIcon, ChatBubbleBottomCenterTextIcon } from '../constants';
+import { PencilIcon, TrashIcon, DocumentCheckIcon, ChatBubbleBottomCenterTextIcon, ArrowDownTrayIcon } from '../constants';
 import * as db from '../services/db';
+import { useData } from '../contexts/DataContext';
+import * as XLSX from 'xlsx';
 
 // Form to add/edit an activity
 const ActivityForm: React.FC<{
@@ -14,7 +16,8 @@ const ActivityForm: React.FC<{
     onClose: () => void;
     initialData: ActivityWithComments | null;
     users: UserProfile[];
-}> = ({ onSave, onClose, initialData, users }) => {
+    complianceId?: string | null;
+}> = ({ onSave, onClose, initialData, users, complianceId }) => {
     const [formState, setFormState] = useState({
         registration_date: initialData?.registration_date || new Date().toISOString().split('T')[0],
         commitment_date: initialData?.commitment_date || '',
@@ -26,6 +29,7 @@ const ActivityForm: React.FC<{
         responsible_user_id: initialData?.responsible_user_id || '',
         source_audit_id: initialData?.source_audit_id,
         source_finding_id: initialData?.source_finding_id,
+        source_compliance_id: initialData?.source_compliance_id || complianceId,
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -214,11 +218,11 @@ const ActivityDetailsModal: React.FC<{
 
 // Main component for Activities page
 const Activities: React.FC = () => {
-    const [activities, setActivities] = useState<ActivityWithComments[]>([]);
-    const [users, setUsers] = useState<UserProfile[]>([]);
+    const { activities, users, complianceRequirements, loading, refreshData } = useData();
     const { currentUser, hasPermission } = useAuth();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
+    const [searchParams] = useSearchParams();
+    const complianceId = searchParams.get('complianceId');
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -226,189 +230,208 @@ const Activities: React.FC = () => {
     const [selectedActivity, setSelectedActivity] = useState<ActivityWithComments | null>(null);
     const [filters, setFilters] = useState({ startDate: '', endDate: '' });
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        const [activitiesRes, usersRes] = await Promise.all([
-            db.getActivities(),
-            db.getUsers()
-        ]);
-        setActivities(activitiesRes);
-        setUsers(usersRes);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    const complianceRequirementName = useMemo(() => {
+        if (!complianceId) return null;
+        return complianceRequirements.find(c => c.id === complianceId)?.name || 'Requisito Desconocido';
+    }, [complianceId, complianceRequirements]);
 
     const filteredActivities = useMemo(() => {
-        return activities.filter(activity => {
-            if (!filters.startDate && !filters.endDate) return true;
-            const commitmentDate = new Date(activity.commitment_date + 'T00:00:00');
-            const startDate = filters.startDate ? new Date(filters.startDate + 'T00:00:00') : null;
-            const endDate = filters.endDate ? new Date(filters.endDate + 'T23:59:59') : null;
+        let filtered = activities;
 
-            if (startDate && commitmentDate < startDate) return false;
-            if (endDate && commitmentDate > endDate) return false;
-            return true;
-        }).sort((a,b) => new Date(a.commitment_date).getTime() - new Date(b.commitment_date).getTime());
-    }, [activities, filters]);
+        if (complianceId) {
+            filtered = filtered.filter(activity => activity.source_compliance_id === complianceId);
+        }
+
+        if (filters.startDate || filters.endDate) {
+            filtered = filtered.filter(activity => {
+                const commitmentDate = new Date(activity.commitment_date + 'T00:00:00');
+                const startDate = filters.startDate ? new Date(filters.startDate + 'T00:00:00') : null;
+                const endDate = filters.endDate ? new Date(filters.endDate + 'T23:59:59') : null;
+
+                if (startDate && commitmentDate < startDate) return false;
+                if (endDate && commitmentDate > endDate) return false;
+                return true;
+            });
+        }
+        
+        return filtered.sort((a,b) => new Date(a.commitment_date).getTime() - new Date(b.commitment_date).getTime());
+    }, [activities, filters, complianceId]);
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setFilters(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSaveActivity = async (data: Omit<Activity, 'id' | 'status' | 'progress' | 'comments'>, id: string | null) => {
+    const handleSave = async (data: Omit<Activity, 'id' | 'status' | 'progress' | 'comments'>, id: string | null) => {
         if (id) {
-            await db.updateActivity(id, data);
+            const originalActivity = activities.find(a => a.id === id);
+            if (originalActivity) {
+                await db.updateActivity(id, { ...originalActivity, ...data });
+            }
         } else {
             await db.addActivity(data);
         }
-        fetchData();
+        refreshData();
         setIsFormModalOpen(false);
-        setEditingActivity(null);
     };
 
-    const handleUpdateActivity = async (activityId: string, updates: Partial<ActivityWithComments>) => {
+    const handleUpdate = async (activityId: string, updates: Partial<ActivityWithComments>) => {
         await db.updateActivity(activityId, updates);
-        if(isDetailsModalOpen && selectedActivity?.id === activityId) {
-            setSelectedActivity(prev => prev ? { ...prev, ...updates } : null);
-        }
-        fetchData();
-    };
-
-    const handleDeleteActivity = async (id: string) => {
-        if (window.confirm('¿Estás seguro de eliminar esta actividad?')) {
-            await db.deleteActivity(id);
-            fetchData();
-        }
+        refreshData(); // This will refetch and update the local state
     };
     
-    const openDetailsModal = (activity: ActivityWithComments) => {
+    const handleDelete = async (id: string) => {
+        if (window.confirm('¿Está seguro de eliminar esta actividad?')) {
+            await db.deleteActivity(id);
+            refreshData();
+        }
+    };
+
+    const handleOpenForm = (activity: ActivityWithComments | null) => {
+        setEditingActivity(activity);
+        setIsFormModalOpen(true);
+    };
+
+    const handleOpenDetails = (activity: ActivityWithComments) => {
         setSelectedActivity(activity);
         setIsDetailsModalOpen(true);
     };
     
-    const getResponsibleName = (id: string) => users.find(u => u.id === id)?.full_name || 'N/A';
-    
+    const getUserName = (id: string) => users.find(u => u.id === id)?.full_name || 'N/A';
+
     const getPriorityClass = (priority: ActivityPriority) => {
-        switch(priority) {
-            case 'Alta': return 'bg-red-100 text-red-800';
-            case 'Media': return 'bg-yellow-100 text-yellow-800';
-            case 'Baja': return 'bg-blue-100 text-blue-800';
-            default: return 'bg-gray-100 text-gray-800';
+        switch (priority) {
+            case 'Alta': return 'text-red-600 font-semibold';
+            case 'Media': return 'text-yellow-600 font-semibold';
+            case 'Baja': return 'text-green-600 font-semibold';
+            default: return 'text-gray-600';
         }
     };
 
-    const getStatusClass = (status: ActivityStatus) => {
-        switch(status) {
-            case 'Completada': return 'bg-green-100 text-green-800';
-            case 'En Progreso': return 'bg-purple-100 text-purple-800';
-            case 'Pendiente': return 'bg-gray-200 text-gray-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
-
-    const navigateToAudit = (auditId?: string | null) => {
-        if (auditId) {
-            navigate(`/audits?view=findings&auditId=${auditId}`);
-        }
-    };
-    
-    const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => {
-        const bgColor = progress === 100 ? 'bg-green-500' : 'bg-blue-500';
-        return (
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div className={`${bgColor} h-2.5 rounded-full`} style={{ width: `${progress}%` }}></div>
-            </div>
-        );
+    const handleExport = () => {
+        const dataToExport = filteredActivities.map(act => ({
+            "Descripción": act.description,
+            "Responsable": getUserName(act.responsible_user_id),
+            "Fecha de Registro": new Date(act.registration_date).toLocaleDateString(),
+            "Fecha Compromiso": new Date(act.commitment_date).toLocaleDateString(),
+            "Prioridad": act.priority,
+            "Estado": act.status,
+            "Progreso (%)": act.progress,
+            "Tipo": act.type,
+            "Proveedor": act.provider,
+            "Costo Estimado": act.estimated_cost,
+        }));
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Actividades");
+        XLSX.writeFile(wb, "plan_de_actividades.xlsx");
     };
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg">
-             <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
-                <h2 className="text-xl font-bold text-dark-text">Gestión de Actividades</h2>
-                <div className="flex items-center space-x-4">
-                     <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="px-3 py-2 border border-gray-300 rounded-md" title="Fecha Desde (Compromiso)"/>
-                     <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="px-3 py-2 border border-gray-300 rounded-md" title="Fecha Hasta (Compromiso)"/>
-                     {hasPermission('manage_activities') && (
-                        <button onClick={() => { setEditingActivity(null); setIsFormModalOpen(true); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark flex-shrink-0">
+            <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
+                <h2 className="text-xl font-bold text-dark-text">Plan de Actividades</h2>
+                <div className="flex items-center space-x-2">
+                        {!complianceId && (
+                            <>
+                                <div className="flex items-center space-x-2">
+                                <label htmlFor="startDate" className="text-sm font-medium text-gray-700">Desde:</label>
+                                <input type="date" id="startDate" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="px-3 py-1 border border-gray-300 rounded-md shadow-sm" />
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <label htmlFor="endDate" className="text-sm font-medium text-gray-700">Hasta:</label>
+                                <input type="date" id="endDate" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="px-3 py-1 border border-gray-300 rounded-md shadow-sm" />
+                            </div>
+                            </>
+                        )}
+                     <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2 flex-shrink-0">
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Exportar</span>
+                    </button>
+                    {hasPermission('manage_activities') && (
+                        <button onClick={() => handleOpenForm(null)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark flex-shrink-0">
                             + Nueva Actividad
                         </button>
                     )}
                 </div>
             </div>
-             <div className="overflow-x-auto">
+
+            {complianceId && (
+                <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+                    <p className="text-sm text-blue-800">
+                        Mostrando actividades para el requisito de cumplimiento: <strong className="font-semibold">{complianceRequirementName}</strong>.
+                        <button onClick={() => navigate('/activities')} className="ml-4 text-blue-600 font-bold hover:underline">
+                            Ver todas
+                        </button>
+                    </p>
+                </div>
+            )}
+
+            <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Compromiso</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prioridad</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Responsable</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha Compromiso</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Prioridad</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progreso</th>
-                             {hasPermission('manage_activities') && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>}
+                            {hasPermission('manage_activities') && <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>}
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {loading ? (
                             <tr><td colSpan={6} className="text-center py-4">Cargando...</td></tr>
                         ) : filteredActivities.map(activity => (
-                             <tr key={activity.id}>
+                            <tr key={activity.id}>
+                                <td className="px-4 py-4 text-sm text-gray-900 max-w-sm"><p className="truncate" title={activity.description}>{activity.description}</p></td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{getUserName(activity.responsible_user_id)}</td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(activity.commitment_date + 'T00:00:00').toLocaleDateString()}</td>
-                                <td className="px-4 py-4 text-sm text-gray-900 max-w-sm" title={activity.description}>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm"><span className={getPriorityClass(activity.priority)}>{activity.priority}</span></td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                                     <div className="flex items-center">
-                                         {activity.source_finding_id && (
-                                            <button onClick={() => navigateToAudit(activity.source_audit_id)} className="flex-shrink-0 mr-2 text-blue-500 hover:text-blue-700" title="Ver hallazgo de auditoría de origen">
-                                                <DocumentCheckIcon className="w-5 h-5" />
-                                            </button>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium truncate">{activity.description}</p>
-                                            <p className="text-xs text-gray-500">{activity.type}{activity.type === 'Externa' ? ` (${activity.provider})` : ''}</p>
+                                        <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                                            <div className="bg-primary h-2.5 rounded-full" style={{ width: `${activity.progress}%` }}></div>
                                         </div>
+                                        <span>{activity.progress}%</span>
                                     </div>
                                 </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityClass(activity.priority)}`}>{activity.priority}</span>
-                                </td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{getResponsibleName(activity.responsible_user_id)}</td>
-                                <td className="px-4 py-4 whitespace-nowrap text-sm w-48">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-full">
-                                          <ProgressBar progress={activity.progress}/>
-                                        </div>
-                                        <span className={`text-xs font-semibold ${getStatusClass(activity.status)} px-2 py-0.5 rounded-full`}>{activity.status}</span>
-                                    </div>
-                                </td>
-                                {hasPermission('manage_activities') && <td className="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-4">
-                                    <button onClick={() => openDetailsModal(activity)} className="text-gray-600 hover:text-primary" title="Ver detalles y comentarios"><ChatBubbleBottomCenterTextIcon className="w-5 h-5" /></button>
-                                    <button onClick={() => { setEditingActivity(activity); setIsFormModalOpen(true); }} className="text-indigo-600 hover:text-indigo-900" title="Modificar"><PencilIcon className="w-5 h-5" /></button>
-                                    <button onClick={() => handleDeleteActivity(activity.id)} className="text-red-600 hover:text-red-900" title="Eliminar"><TrashIcon className="w-5 h-5" /></button>
-                                </td>}
+                                {hasPermission('manage_activities') && (
+                                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                        <button onClick={() => handleOpenDetails(activity)} className="text-gray-600 hover:text-primary" title="Ver Detalles y Comentarios"><ChatBubbleBottomCenterTextIcon className="w-5 h-5"/></button>
+                                        <button onClick={() => handleOpenForm(activity)} className="text-indigo-600 hover:text-indigo-900" title="Editar"><PencilIcon className="w-5 h-5"/></button>
+                                        <button onClick={() => handleDelete(activity.id)} className="text-red-600 hover:text-red-900" title="Eliminar"><TrashIcon className="w-5 h-5"/></button>
+                                    </td>
+                                )}
                             </tr>
                         ))}
-                         {filteredActivities.length === 0 && !loading && (
-                             <tr><td colSpan={hasPermission('manage_activities') ? 6 : 5} className="text-center py-4 text-gray-500">No hay actividades para mostrar.</td></tr>
+                        {filteredActivities.length === 0 && !loading && (
+                            <tr><td colSpan={6} className="text-center py-4 text-gray-500">No hay actividades que coincidan con los filtros.</td></tr>
                         )}
                     </tbody>
                 </table>
             </div>
-
-            {hasPermission('manage_activities') && (
-                 <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={editingActivity ? 'Modificar Actividad' : 'Registrar Nueva Actividad'}>
-                     <ActivityForm onSave={handleSaveActivity} onClose={() => { setIsFormModalOpen(false); setEditingActivity(null); }} initialData={editingActivity} users={users} />
-                </Modal>
-            )}
-
-            {currentUser && <ActivityDetailsModal
-                isOpen={isDetailsModalOpen}
-                onClose={() => setIsDetailsModalOpen(false)}
-                activity={selectedActivity}
-                onUpdate={handleUpdateActivity}
-                users={users}
-                currentUser={currentUser}
-            />}
+                {currentUser && hasPermission('manage_activities') && (
+                <>
+                    <Modal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} title={editingActivity ? 'Editar Actividad' : 'Nueva Actividad'}>
+                        <ActivityForm 
+                            onSave={handleSave} 
+                            onClose={() => setIsFormModalOpen(false)} 
+                            initialData={editingActivity} 
+                            users={users} 
+                            complianceId={complianceId}
+                        />
+                    </Modal>
+                        <ActivityDetailsModal
+                        isOpen={isDetailsModalOpen}
+                        onClose={() => setIsDetailsModalOpen(false)}
+                        activity={selectedActivity}
+                        onUpdate={handleUpdate}
+                        users={users}
+                        currentUser={currentUser}
+                    />
+                </>
+                )}
         </div>
     );
 };

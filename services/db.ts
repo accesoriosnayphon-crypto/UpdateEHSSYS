@@ -29,6 +29,13 @@ const _setData = <T>(key: string, value: T): void => {
 // --- INITIALIZATION ---
 
 const USER_ADMIN_ID = 'user-admin-uuid';
+const today = new Date();
+const addDays = (date: Date, days: number): string => {
+    const result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result.toISOString().split('T')[0];
+};
+
 
 const INITIAL_SETUP_DATA = {
     settings: {
@@ -117,11 +124,20 @@ const INITIAL_SETUP_DATA = {
         }
     ] as types.Jha[],
     activities: [] as types.Activity[],
-    audits: [] as types.Audit[]
+    audits: [] as types.Audit[],
+    compliance_requirements: [
+        { id: _uuid(), type: 'Legal', name: 'NOM-019-STPS-2011', description: 'Constitución, integración, organización y funcionamiento de las comisiones de seguridad e higiene.', next_review_date: addDays(today, 60) },
+        { id: _uuid(), type: 'Norma', name: 'ISO 45001:2018 Cláusula 5.2', description: 'Política de la Seguridad y Salud en el Trabajo. La alta dirección debe establecer, implementar y mantener una política de SST.', next_review_date: addDays(today, 25) },
+        { id: _uuid(), type: 'Corporativo', name: 'Política de Cero Accidentes', description: 'Política interna de la compañía para la prevención de accidentes y lesiones en todas las operaciones.', next_review_date: addDays(today, -10) },
+        { id: _uuid(), type: 'Legal', name: 'NOM-002-STPS-2010', description: 'Condiciones de seguridad - Prevención y protección contra incendios en los centros de trabajo.', next_review_date: addDays(today, 180) },
+    ] as types.ComplianceRequirement[],
+    contractors: [] as types.Contractor[],
+    contractor_documents: [] as types.ContractorDocument[],
+    contractor_employees: [] as types.ContractorEmployee[],
 };
 
 
-const DB_INITIALIZED_KEY = 'ehs_db_initialized_v2'; // Use v2 to force re-init from mock data
+const DB_INITIALIZED_KEY = 'ehs_db_initialized_v4'; // Increment version to re-init with contractors
 
 export const initialize = async () => {
     const isInitialized = _getData(DB_INITIALIZED_KEY, false);
@@ -423,6 +439,42 @@ export const addAudit = async (data: Omit<types.Audit, 'id' | 'folio' | 'finding
 };
 export const updateAudit = auditCrud.update;
 export const deleteAudit = auditCrud.delete;
+
+// Compliance Requirements
+const complianceCrud = createCrud<types.ComplianceRequirement>('compliance_requirements');
+export const getComplianceRequirements = complianceCrud.getAll;
+export const addComplianceRequirement = complianceCrud.add;
+export const updateComplianceRequirement = complianceCrud.update;
+export const deleteComplianceRequirement = complianceCrud.delete;
+
+// --- Contractors ---
+const contractorCrud = createCrud<types.Contractor>('contractors');
+export const getContractors = contractorCrud.getAll;
+export const addContractor = contractorCrud.add;
+export const updateContractor = contractorCrud.update;
+export const deleteContractor = async (id: string) => {
+    // Delete contractor and all related documents/employees
+    await contractorCrud.delete(id);
+    let docs = await getContractorDocuments();
+    docs = docs.filter(d => d.contractor_id !== id);
+    _setData('ehs_contractor_documents', docs);
+    let emps = await getContractorEmployees();
+    emps = emps.filter(e => e.contractor_id !== id);
+    _setData('ehs_contractor_employees', emps);
+};
+
+// Contractor Documents
+const contractorDocCrud = createCrud<types.ContractorDocument>('contractor_documents');
+export const getContractorDocuments = contractorDocCrud.getAll;
+export const addContractorDocument = contractorDocCrud.add;
+export const deleteContractorDocument = contractorDocCrud.delete;
+
+// Contractor Employees
+const contractorEmpCrud = createCrud<types.ContractorEmployee>('contractor_employees');
+export const getContractorEmployees = contractorEmpCrud.getAll;
+export const addContractorEmployee = contractorEmpCrud.add;
+export const deleteContractorEmployee = contractorEmpCrud.delete;
+
 
 export const isPpeItemInUse = async (ppeItemId: string): Promise<types.PpeItemInUseResult> => {
     const rawDeliveries = await _getData<types.PpeDelivery[]>(`ehs_ppe_deliveries`, []);

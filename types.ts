@@ -66,10 +66,17 @@ export type Inspection = {
 export type SafetyEquipment = {
   id: string;
   name: string;
-  type: "Extintor" | "Hidrante" | "Salida de Emergencia" | "Lámpara de Emergencia" | "Rampa" | "Lavaojos" | "Ducha de Seguridad" | "Otro";
+  type: "Extintor" | "Hidrante" | "Salida de Emergencia" | "Lámpara de Emergencia" | "Rampa" | "Lavaojos" | "Ducha de Seguridad" | "Carretilla de agua" | "Unidad móvil" | "Otro";
   location: string;
   inspection_frequency: number;
   last_inspection_date: string | null;
+};
+
+export type ChecklistItemResult = {
+  id: string;
+  item: string;
+  status: 'OK' | 'NOK' | 'N/A';
+  comment: string;
 };
 
 export type SafetyInspectionLog = {
@@ -79,6 +86,7 @@ export type SafetyInspectionLog = {
   status: "OK" | "Reparación Requerida" | "Reemplazo Requerido";
   notes: string | null;
   inspector_id: string;
+  checklist_results?: ChecklistItemResult[] | null;
 };
 
 export type Chemical = {
@@ -118,6 +126,7 @@ export type WorkPermit = {
   jha_id: string | null;
   notes: string | null;
   work_type: "Interno" | "Externo";
+  contractor_id: string | null;
   provider_name: string | null;
   provider_details: string | null;
   authorized_workers: AuthorizedWorker[] | null;
@@ -227,6 +236,8 @@ export type Activity = {
   responsible_user_id: string;
   source_audit_id: string | null;
   source_finding_id: string | null;
+  source_compliance_id?: string | null;
+  source_capa_id?: string | null;
 };
 
 export type Audit = {
@@ -240,6 +251,38 @@ export type Audit = {
   lead_auditor_id: string;
   auditor_ids: string[];
   findings: unknown; // JSONB
+};
+
+export type ComplianceRequirement = {
+    id: string;
+    type: 'Legal' | 'Norma' | 'Corporativo';
+    name: string;
+    description: string;
+    next_review_date: string;
+};
+
+export type Contractor = {
+    id: string;
+    name: string;
+    rfc: string | null;
+    contact_person: string;
+    contact_phone: string;
+    status: 'Activo' | 'Inactivo' | 'Vetado';
+};
+
+export type ContractorDocument = {
+    id: string;
+    contractor_id: string;
+    document_name: string;
+    document_url: string; // Base64 data URL
+    expiry_date: string; // ISO date string
+};
+
+export type ContractorEmployee = {
+    id: string;
+    contractor_id: string;
+    name: string;
+    nss: string; // Número de Seguridad Social
 };
 
 
@@ -311,7 +354,7 @@ export const VIOLATION_TYPES: ViolationType[] = [
   'Equipo en mal estado',
 ];
 
-export const EQUIPMENT_TYPES = ['Extintor', 'Hidrante', 'Salida de Emergencia', 'Lámpara de Emergencia', 'Rampa', 'Lavaojos', 'Ducha de Seguridad', 'Otro'] as const;
+export const EQUIPMENT_TYPES = ['Extintor', 'Hidrante', 'Salida de Emergencia', 'Lámpara de Emergencia', 'Rampa', 'Lavaojos', 'Ducha de Seguridad', 'Carretilla de agua', 'Unidad móvil', 'Otro'] as const;
 export type EquipmentType = typeof EQUIPMENT_TYPES[number];
 
 export type SafetyInspectionLogStatus = 'OK' | 'Reparación Requerida' | 'Reemplazo Requerido';
@@ -424,6 +467,8 @@ export type Permission =
   | 'manage_respel'
   | 'manage_audits'
   | 'manage_capa'
+  | 'manage_compliance'
+  | 'manage_contractors'
   | 'view_reports'
   | 'manage_users'
   | 'manage_settings'
@@ -445,6 +490,8 @@ export const PERMISSIONS: { id: Permission; label: string }[] = [
   { id: 'manage_respel', label: 'Gestionar Formatos RESPEL' },
   { id: 'manage_audits', label: 'Gestionar Auditorías'},
   { id: 'manage_capa', label: 'Gestionar Acciones CAPA' },
+  { id: 'manage_compliance', label: 'Gestionar Cumplimiento'},
+  { id: 'manage_contractors', label: 'Gestionar Contratistas'},
   { id: 'view_reports', label: 'Ver Reportes' },
   { id: 'manage_users', label: 'Gestionar Usuarios' },
   { id: 'manage_settings', label: 'Gestionar Configuración' },
@@ -452,3 +499,14 @@ export const PERMISSIONS: { id: Permission; label: string }[] = [
 ];
 
 export type UserLevel = 'Administrador' | 'Supervisor' | 'Operador';
+
+// --- App-wide Features ---
+export type Notification = {
+  id: string;
+  type: 'inspection' | 'ppe_delivery' | 'capa' | 'work_permit' | 'training' | 'contractor_document';
+  title: string;
+  message: string;
+  link: string;
+  timestamp: string; // ISO string
+  isRead: boolean;
+};

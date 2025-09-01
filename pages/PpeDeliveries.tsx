@@ -3,9 +3,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { PpeItem, PpeDelivery, Employee, DeliveryType, PpeDeliveryWithDetails } from '../types';
 import Modal from '../components/Modal';
 import DeliveryReceipt from '../components/DeliveryReceipt';
-import { PrinterIcon, CheckCircleIcon } from '../constants';
+import { PrinterIcon, CheckCircleIcon, ArrowDownTrayIcon } from '../constants';
 import { useAuth } from '../Auth';
 import * as db from '../services/db';
+import * as XLSX from 'xlsx';
 
 const PpeDeliveryForm: React.FC<{ onSave: (delivery: Omit<PpeDelivery, 'id' | 'folio' | 'status' | 'requested_by_user_id' | 'approved_by_user_id'>) => void, onClose: () => void, employees: Employee[], ppeItems: PpeItem[] }> = ({ onSave, onClose, employees, ppeItems }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -226,6 +227,27 @@ const PpeDeliveries: React.FC = () => {
             employee.employee_number.toLowerCase().includes(searchTermLower)
         );
     });
+
+    const handleExport = () => {
+        const dataToExport = filteredDeliveries.map(d => ({
+            "Folio": d.folio,
+            "Fecha de Entrega": d.date ? new Date(d.date).toLocaleDateString() : '',
+            "Empleado": d.employees?.name || 'N/A',
+            "Número de Empleado": d.employees?.employee_number || 'N/A',
+            "EPP Entregado": d.ppe_items ? `${d.ppe_items.name} (${d.ppe_items.type} / ${d.ppe_items.size})` : 'N/A',
+            "Cantidad": d.quantity,
+            "Tipo de Entrega": d.delivery_type,
+            "Fecha de Renovación": d.renewal_date ? new Date(d.renewal_date).toLocaleDateString() : '',
+            "Estado": d.status,
+            "Solicitado Por": d.profiles?.full_name || 'N/A',
+            "Aprobado Por": d.approvedByUser?.full_name || 'N/A'
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Entregas_EPP");
+        XLSX.writeFile(wb, "entregas_epp.xlsx");
+    };
     
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg">
@@ -239,6 +261,10 @@ const PpeDeliveries: React.FC = () => {
                         onChange={e => setDeliverySearchTerm(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                     />
+                    <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2 flex-shrink-0">
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Exportar</span>
+                    </button>
                      {hasPermission('manage_ppe') && (
                         <button onClick={() => setIsDeliveryModalOpen(true)} className="px-4 py-2 bg-secondary text-dark-text rounded-md hover:bg-yellow-500 font-semibold flex-shrink-0">
                             + Registrar Entrega

@@ -1,54 +1,14 @@
 
+
 import React, { useMemo, useState, useEffect } from 'react';
 import DashboardCard from '../components/DashboardCard';
 import { UserGroupIcon, ShieldCheckIcon, ExclamationTriangleIcon, AcademicCapIcon, ArrowPathIcon } from '../constants';
 import { Employee, Incident, PpeItem, Training, Waste, WasteLog, Inspection, ViolationType } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import * as db from '../services/db';
+import { useData } from '../contexts/DataContext';
 
 const Dashboard: React.FC = () => {
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [incidents, setIncidents] = useState<Incident[]>([]);
-    const [ppeItems, setPpeItems] = useState<PpeItem[]>([]);
-    const [trainings, setTrainings] = useState<Training[]>([]);
-    const [wasteLogs, setWasteLogs] = useState<WasteLog[]>([]);
-    const [wastes, setWastes] = useState<Waste[]>([]);
-    const [inspections, setInspections] = useState<Inspection[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            const [
-                employeesRes,
-                incidentsRes,
-                ppeItemsRes,
-                trainingsRes,
-                wasteLogsRes,
-                wastesRes,
-                inspectionsRes,
-            ] = await Promise.all([
-                db.getEmployees(),
-                db.getIncidents(),
-                db.getPpeItems(),
-                db.getTrainings(),
-                db.getWasteLogs(),
-                db.getWastes(),
-                db.getInspections(),
-            ]);
-
-            setEmployees(employeesRes);
-            setIncidents(incidentsRes);
-            setPpeItems(ppeItemsRes);
-            setTrainings(trainingsRes);
-            setWasteLogs(wasteLogsRes);
-            setWastes(wastesRes);
-            setInspections(inspectionsRes);
-
-            setLoading(false);
-        };
-        fetchData();
-    }, []);
+    const { employees, incidents, ppeItems, trainings, wasteLogs, wastes, inspections, loading } = useData();
     
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');

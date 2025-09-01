@@ -1,11 +1,14 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Incident, Employee, EventType } from '../types';
 import Modal from '../components/Modal';
 import IncidentReport from '../components/IncidentReport';
-import { ClipboardDocumentListIcon } from '../constants';
+import { ClipboardDocumentListIcon, ArrowDownTrayIcon } from '../constants';
 import { useAuth } from '../Auth';
 import * as db from '../services/db';
+import { useData } from '../contexts/DataContext';
+import * as XLSX from 'xlsx';
 
 const IncidentForm: React.FC<{
     onSave: (incident: Omit<Incident, 'id' | 'folio'>) => void,
@@ -148,34 +151,17 @@ const IncidentForm: React.FC<{
 };
 
 const Incidents: React.FC = () => {
-    const [incidents, setIncidents] = useState<Incident[]>([]);
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { incidents, employees, loading, refreshData } = useData();
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [currentIncidentForReport, setCurrentIncidentForReport] = useState<Incident | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const { hasPermission } = useAuth();
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        const [incidentsRes, employeesRes] = await Promise.all([
-            db.getIncidents(),
-            db.getEmployees()
-        ]);
-        setIncidents(incidentsRes);
-        setEmployees(employeesRes);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
     const handleSaveIncident = async (incidentData: Omit<Incident, 'id' | 'folio'>) => {
         const newIncident = await db.addIncident({ ...incidentData, folio: '' });
         if (newIncident) {
-            fetchData();
+            refreshData();
             setCurrentIncidentForReport(newIncident);
             setIsFormModalOpen(false);
             setIsReportModalOpen(true);
@@ -194,6 +180,11 @@ const Incidents: React.FC = () => {
       return employees.find(e => e.id === id)?.name || 'Desconocido';
     };
 
+    const getEmployeeNameString = (id: string | null) => {
+      if (!id) return 'No aplica';
+      return employees.find(e => e.id === id)?.name || 'Desconocido';
+    };
+
     const filteredIncidents = incidents.filter(incident => {
         if (!searchTerm) return true;
         const employee = employees.find(e => e.id === incident.employee_id);
@@ -208,11 +199,30 @@ const Incidents: React.FC = () => {
         return descriptionMatch || employeeMatch;
     });
 
+    const handleExport = () => {
+        const dataToExport = filteredIncidents.map(inc => ({
+            "Folio": inc.folio,
+            "Fecha": new Date(inc.date).toLocaleDateString(),
+            "Hora": inc.time,
+            "Tipo de Evento": inc.event_type,
+            "Empleado Involucrado": getEmployeeNameString(inc.employee_id),
+            "Área": inc.area,
+            "Máquina / Operación": inc.machine_or_operation,
+            "Descripción": inc.description,
+            "Tratamiento": inc.treatment,
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Incidentes");
+        XLSX.writeFile(wb, "reporte_incidentes.xlsx");
+    };
+
     return (
         <div className="bg-white p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
                 <h2 className="text-xl font-bold text-dark-text">Investigación de Incidentes</h2>
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
                     <input
                         type="text"
                         placeholder="Buscar por empleado o descripción..."
@@ -220,6 +230,10 @@ const Incidents: React.FC = () => {
                         onChange={e => setSearchTerm(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-md"
                     />
+                    <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2 flex-shrink-0">
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Exportar</span>
+                    </button>
                     {hasPermission('manage_incidents') && (
                         <button onClick={() => setIsFormModalOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark flex-shrink-0">
                             + Nuevo Reporte

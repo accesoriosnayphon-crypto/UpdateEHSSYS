@@ -2,9 +2,10 @@ import React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { PpeItem, Employee, PpeAsset, PpeAssetLog, PpeAssetStatus, PpeAssetEventType } from '../types';
 import Modal from '../components/Modal';
-import { EyeIcon, PencilIcon, TrashIcon } from '../constants';
+import { EyeIcon, PencilIcon, TrashIcon, ArrowDownTrayIcon } from '../constants';
 import { useAuth } from '../Auth';
 import * as db from '../services/db';
+import * as XLSX from 'xlsx';
 
 const PpeItemForm: React.FC<{ 
     onSave: (item: Omit<PpeItem, 'id'>, id: string | null) => void, 
@@ -247,6 +248,39 @@ const PpeInventory: React.FC = () => {
     const [isAssetFormModalOpen, setIsAssetFormModalOpen] = useState(false);
     const [actionModalState, setActionModalState] = useState<ActionModalState>(null);
 
+    const handleExportConsumables = () => {
+        const dataToExport = ppeItems.map(item => ({
+            "Nombre": item.name,
+            "Tipo / Material": item.type,
+            "Talla": item.size,
+            "Stock": item.stock,
+        }));
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "EPP_Consumibles");
+        XLSX.writeFile(wb, "inventario_epp_consumibles.xlsx");
+    };
+
+    const handleExportAssets = () => {
+        const dataToExport = ppeAssets.map(asset => {
+            const item = ppeItems.find(i => i.id === asset.ppe_item_id);
+            const employee = employees.find(e => e.id === asset.current_employee_id);
+            return {
+                "Etiqueta de Activo": asset.asset_tag,
+                "Tipo de EPP": item ? `${item.name} (${item.type} / ${item.size})` : 'N/A',
+                "Estado": asset.status,
+                "Asignado a": employee ? employee.name : 'N/A',
+                "Fecha de Compra": asset.purchase_date ? new Date(asset.purchase_date).toLocaleDateString() : 'N/A',
+                "Último Mantenimiento": asset.last_maintenance_date ? new Date(asset.last_maintenance_date).toLocaleDateString() : 'N/A',
+                "Fecha de Baja": asset.decommission_date ? new Date(asset.decommission_date).toLocaleDateString() : 'N/A',
+            };
+        });
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "EPP_Activos");
+        XLSX.writeFile(wb, "inventario_epp_activos.xlsx");
+    };
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         const [itemsRes, employeesRes, assetsRes, logsRes] = await Promise.all([
@@ -456,13 +490,19 @@ const PpeInventory: React.FC = () => {
 
             {view === 'inventory' && (
                 <div>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
                         <h2 className="text-xl font-bold text-dark-text">Catálogo de EPP (Consumibles)</h2>
-                        {hasPermission('manage_ppe') && (
-                            <button onClick={() => { setEditingPpeItem(null); setIsItemModalOpen(true); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
-                                + Agregar Variante de EPP
+                        <div className="flex items-center space-x-2">
+                            <button onClick={handleExportConsumables} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2">
+                                <ArrowDownTrayIcon className="w-5 h-5" />
+                                <span>Exportar</span>
                             </button>
-                        )}
+                            {hasPermission('manage_ppe') && (
+                                <button onClick={() => { setEditingPpeItem(null); setIsItemModalOpen(true); }} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
+                                    + Agregar Variante de EPP
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
@@ -514,13 +554,19 @@ const PpeInventory: React.FC = () => {
             
             {view === 'assets' && (
                 <div>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-4 gap-4 flex-wrap">
                         <h2 className="text-xl font-bold text-dark-text">Gestión de Activos de EPP</h2>
-                        {hasPermission('manage_ppe') && (
-                            <button onClick={() => setIsAssetFormModalOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
-                                + Registrar Activo
+                        <div className="flex items-center space-x-2">
+                             <button onClick={handleExportAssets} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2">
+                                <ArrowDownTrayIcon className="w-5 h-5" />
+                                <span>Exportar</span>
                             </button>
-                        )}
+                            {hasPermission('manage_ppe') && (
+                                <button onClick={() => setIsAssetFormModalOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
+                                    + Registrar Activo
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">

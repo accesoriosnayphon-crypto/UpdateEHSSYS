@@ -2,9 +2,11 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Training, Employee, TrainingType } from '../types';
 import Modal from '../components/Modal';
 import TrainingReport from '../components/TrainingReport';
-import { EyeIcon, TrashIcon, PrinterIcon } from '../constants';
+import { EyeIcon, TrashIcon, PrinterIcon, ArrowDownTrayIcon } from '../constants';
 import { useAuth } from '../Auth';
 import * as db from '../services/db';
+import { useData } from '../contexts/DataContext';
+import * as XLSX from 'xlsx';
 
 const TrainingForm: React.FC<{ onSave: (training: Omit<Training, 'id'>) => void, onClose: () => void, employees: Employee[] }> = ({ onSave, onClose, employees }) => {
     const [topic, setTopic] = useState('');
@@ -124,33 +126,16 @@ const TrainingForm: React.FC<{ onSave: (training: Omit<Training, 'id'>) => void,
 }
 
 const Training: React.FC = () => {
-    const [trainings, setTrainings] = useState<Training[]>([]);
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { trainings, employees, loading, refreshData } = useData();
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [isAttendeesModalOpen, setIsAttendeesModalOpen] = useState(false);
     const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
     const { hasPermission, appSettings } = useAuth();
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        const [trainingsRes, employeesRes] = await Promise.all([
-            db.getTrainings(),
-            db.getEmployees()
-        ]);
-        setTrainings(trainingsRes);
-        setEmployees(employeesRes);
-        setLoading(false);
-    }, []);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
     const handleSaveTraining = async (trainingData: Omit<Training, 'id'>) => {
         await db.addTraining(trainingData);
-        fetchData();
+        refreshData();
         setIsFormModalOpen(false);
     };
     
@@ -164,6 +149,26 @@ const Training: React.FC = () => {
         setIsReportModalOpen(true);
     };
 
+    const handleExport = () => {
+        const dataToExport = trainings.map(t => {
+            const attendeesList = (t.attendees || []).map(id => employees.find(e => e.id === id)?.name).filter(Boolean).join(', ');
+            return {
+                "Tema": t.topic,
+                "Fecha": new Date(t.date).toLocaleDateString(),
+                "Tipo": t.training_type,
+                "Impartida por": t.instructor,
+                "Duración (Horas)": t.duration_hours,
+                "Nº de Asistentes": (t.attendees || []).length,
+                "Asistentes": attendeesList,
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Capacitaciones");
+        XLSX.writeFile(wb, "reporte_capacitaciones.xlsx");
+    };
+
     const attendeesForSelectedTraining = useMemo(() => {
         if (!selectedTraining) return [];
         return (selectedTraining.attendees || []).map(id => employees.find(e => e.id === id)).filter(Boolean) as Employee[];
@@ -173,11 +178,17 @@ const Training: React.FC = () => {
         <div className="bg-white p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-dark-text">Registro de Capacitaciones</h2>
-                {hasPermission('manage_trainings') && (
-                    <button onClick={() => setIsFormModalOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
-                        + Registrar Capacitación
+                <div className="flex items-center space-x-2">
+                    <button onClick={handleExport} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center space-x-2">
+                        <ArrowDownTrayIcon className="w-5 h-5" />
+                        <span>Exportar</span>
                     </button>
-                )}
+                    {hasPermission('manage_trainings') && (
+                        <button onClick={() => setIsFormModalOpen(true)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">
+                            + Registrar Capacitación
+                        </button>
+                    )}
+                </div>
             </div>
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">

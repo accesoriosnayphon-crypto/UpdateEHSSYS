@@ -23,9 +23,15 @@ import Settings from './pages/Settings';
 import Audits from './pages/Audits';
 import History from './pages/History';
 import CAPA from './pages/CAPA';
+import Compliance from './pages/Compliance';
+import Contractors from './pages/Contractors';
 import { AuthProvider, useAuth } from './Auth';
-import { HomeIcon, UserGroupIcon, ShieldCheckIcon, ExclamationTriangleIcon, AcademicCapIcon, ChartBarIcon, ClipboardDocumentCheckIcon, UsersIcon, ArrowLeftOnRectangleIcon, ShieldExclamationIcon, CalendarDaysIcon, DocumentMagnifyingGlassIcon, VialIcon, BriefcaseIcon, ArrowPathIcon, Cog6ToothIcon, DocumentCheckIcon, ArchiveBoxIcon, WrenchScrewdriverIcon, ChevronDownIcon } from './constants';
+import { HomeIcon, UserGroupIcon, ShieldCheckIcon, ExclamationTriangleIcon, AcademicCapIcon, ChartBarIcon, ClipboardDocumentCheckIcon, UsersIcon, ArrowLeftOnRectangleIcon, ShieldExclamationIcon, CalendarDaysIcon, DocumentMagnifyingGlassIcon, VialIcon, BriefcaseIcon, ArrowPathIcon, Cog6ToothIcon, DocumentCheckIcon, ArchiveBoxIcon, WrenchScrewdriverIcon, ChevronDownIcon, ScaleIcon, BuildingOffice2Icon } from './constants';
 import { Permission } from './types';
+import { DataProvider } from './contexts/DataContext';
+import GlobalSearch from './components/GlobalSearch';
+import Notifications from './components/Notifications';
+
 
 const navLinkGroups = [
     {
@@ -52,6 +58,7 @@ const navLinkGroups = [
             { permission: 'manage_chemicals' as Permission, path: '/chemicals', label: 'Inventario Químico', icon: <VialIcon className="w-6 h-6" /> },
             { permission: 'manage_waste' as Permission, path: '/waste-management', label: 'Gestión de Residuos', icon: <ArrowPathIcon className="w-6 h-6" /> },
             { permission: 'manage_respel' as Permission, path: '/respel', label: 'Formatos RESPEL', icon: <ArchiveBoxIcon className="w-6 h-6" /> },
+            { permission: 'manage_contractors' as Permission, path: '/contractors', label: 'Gestión de Contratistas', icon: <BuildingOffice2Icon className="w-6 h-6" /> },
         ]
     },
     {
@@ -63,6 +70,7 @@ const navLinkGroups = [
             { permission: 'manage_activities' as Permission, path: '/activities', label: 'Actividades', icon: <CalendarDaysIcon className="w-6 h-6" /> },
             { permission: 'manage_audits' as Permission, path: '/audits', label: 'Auditorías', icon: <DocumentCheckIcon className="w-6 h-6" /> },
             { permission: 'manage_capa' as Permission, path: '/capa', label: 'Acciones CAPA', icon: <WrenchScrewdriverIcon className="w-6 h-6" /> },
+            { permission: 'manage_compliance' as Permission, path: '/compliance', label: 'Gestión de Cumplimiento', icon: <ScaleIcon className="w-6 h-6" /> },
             { permission: 'view_reports' as Permission, path: '/reports', label: 'Reportes', icon: <ChartBarIcon className="w-6 h-6" /> },
         ]
     },
@@ -168,12 +176,26 @@ const Sidebar: React.FC = () => {
 
 const Header: React.FC = () => {
     const location = useLocation();
-    const currentLink = navLinkGroups.flatMap(g => g.links).find(link => link.path === location.pathname);
-    const title = currentLink ? currentLink.label : 'Dashboard';
+    
+    // Find the title based on the current path
+    const [title, setTitle] = useState('Dashboard');
+    useEffect(() => {
+        const currentLink = navLinkGroups.flatMap(g => g.links).find(link => {
+            if (link.path === '/') return location.pathname === '/';
+            return location.pathname.startsWith(link.path);
+        });
+        setTitle(currentLink ? currentLink.label : 'Dashboard');
+    }, [location.pathname]);
 
     return (
-        <header className="bg-white shadow-md p-4">
-            <h1 className="text-2xl font-bold text-dark-text">{title}</h1>
+         <header className="bg-white shadow-md p-4 flex items-center justify-between gap-4">
+            <h1 className="text-2xl font-bold text-dark-text flex-shrink-0">{title}</h1>
+            <div className="flex-grow min-w-0 max-w-2xl mx-auto">
+                <GlobalSearch />
+            </div>
+            <div className="flex items-center space-x-4">
+                <Notifications />
+            </div>
         </header>
     );
 }
@@ -203,6 +225,8 @@ const ProtectedLayout: React.FC = () => {
                         {hasPermission('manage_activities') && <Route path="/activities" element={<Activities />} />}
                         {hasPermission('manage_audits') && <Route path="/audits" element={<Audits />} />}
                         {hasPermission('manage_capa') && <Route path="/capa" element={<CAPA />} />}
+                        {hasPermission('manage_compliance') && <Route path="/compliance" element={<Compliance />} />}
+                        {hasPermission('manage_contractors') && <Route path="/contractors" element={<Contractors />} />}
                         {hasPermission('manage_users') && <Route path="/users" element={<Users />} />}
                         {hasPermission('view_reports') && <Route path="/reports" element={<Reports />} />}
                         {hasPermission('manage_settings') && <Route path="/settings" element={<Settings />} />}
@@ -233,16 +257,18 @@ const AppContent: React.FC = () => {
     }
     
     return (
-         <Routes>
-            {!currentUser ? (
-                <>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="*" element={<Navigate to="/login" replace />} />
-                </>
-            ) : (
-                <Route path="/*" element={<ProtectedLayout />} />
-            )}
-        </Routes>
+        <DataProvider>
+             <Routes>
+                {!currentUser ? (
+                    <>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="*" element={<Navigate to="/login" replace />} />
+                    </>
+                ) : (
+                    <Route path="/*" element={<ProtectedLayout />} />
+                )}
+            </Routes>
+        </DataProvider>
     )
 }
 
